@@ -1,5 +1,9 @@
 from aiogram.fsm.state import State, StatesGroup
 
+
+class UsernameConsentStates(StatesGroup):
+    waiting_for_consent = State()
+
 class RegistrationStates(StatesGroup):
     waiting_for_username = State()
     waiting_for_password = State()

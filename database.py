@@ -1,6 +1,7 @@
 import asyncpg
 from config import config
 import os
+import logging
 
 os.makedirs("uploads", exist_ok=True)
 os.makedirs("uploads/profile_photos", exist_ok=True)
@@ -24,14 +25,14 @@ class Database:
                 max_size=20
             )
 
-            print("✅ Подключение к базе данных успешно")
+            logging.info("✅ Подключение к базе данных успешно")
 
             async with self.pool.acquire() as conn:
                 # Создаем таблицу users с полной структурой
                 await conn.execute('''
                     CREATE TABLE IF NOT EXISTS users (
                         id SERIAL PRIMARY KEY,
-                        telegram_id INTEGER UNIQUE,
+                        telegram_id BIGINT UNIQUE,
                         username VARCHAR(50) UNIQUE NOT NULL,
                         password VARCHAR(255) NOT NULL,
                         first_name VARCHAR(255) NOT NULL,
@@ -51,19 +52,19 @@ class Database:
                         matches_count INTEGER DEFAULT 0,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         last_login TIMESTAMP,
-                        last_search TIMESTAMP
+                        last_search TIMESTAMP,
+                        telegram_real_username VARCHAR(255)  -- ДОБАВЛЕНО: реальный Telegram username
                     )
                 ''')
-                print("✅ Таблица users создана/проверена")
+                logging.info("✅ Таблица users создана/проверена")
 
-                # Создаем таблицу likes
                 await conn.execute('''
                     CREATE TABLE IF NOT EXISTS likes (
                         id SERIAL PRIMARY KEY,
-                        user_id INTEGER NOT NULL REFERENCES users(id),
-                        liked_user_id INTEGER NOT NULL REFERENCES users(id),
+                        from_user_id BIGINT NOT NULL REFERENCES users(id),
+                        to_user_id BIGINT NOT NULL REFERENCES users(id),
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        UNIQUE(user_id, liked_user_id)
+                        UNIQUE(from_user_id, to_user_id)
                     )
                 ''')
                 print("✅ Таблица likes создана/проверена")
@@ -72,19 +73,19 @@ class Database:
                 await conn.execute('''
                     CREATE TABLE IF NOT EXISTS profile_views (
                         id SERIAL PRIMARY KEY,
-                        viewer_id INTEGER NOT NULL REFERENCES users(id),
-                        viewed_user_id INTEGER NOT NULL REFERENCES users(id),
+                        viewer_id BIGINT NOT NULL REFERENCES users(id),
+                        viewed_user_id BIGINT NOT NULL REFERENCES users(id),
                         viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         UNIQUE(viewer_id, viewed_user_id)
                     )
                 ''')
-                print("✅ Таблица profile_views создана/проверена")
+                logging.info("✅ Таблица profile_views создана/проверена")
 
                 # Создаем таблицу search_filters
                 await conn.execute('''
                     CREATE TABLE IF NOT EXISTS search_filters (
                         id SERIAL PRIMARY KEY,
-                        user_id INTEGER NOT NULL REFERENCES users(id),
+                        user_id BIGINT NOT NULL REFERENCES users(id),
                         interest VARCHAR(50),
                         location VARCHAR(255),
                         time_period VARCHAR(50),
@@ -92,28 +93,29 @@ class Database:
                         UNIQUE(user_id)
                     )
                 ''')
-                print("✅ Таблица search_filters создана/проверена")
+                logging.info("✅ Таблица search_filters создана/проверена")
 
-                # Создаем таблицу matches для встреч
+                # Обновим таблицу matches
                 await conn.execute('''
                     CREATE TABLE IF NOT EXISTS matches (
                         id SERIAL PRIMARY KEY,
-                        user1_id INTEGER NOT NULL REFERENCES users(id),
-                        user2_id INTEGER NOT NULL REFERENCES users(id),
+                        from_user_id BIGINT NOT NULL REFERENCES users(id),
+                        to_user_id BIGINT NOT NULL REFERENCES users(id),
+                        activity_id BIGINT REFERENCES users(id), -- Чья активность используется
                         status VARCHAR(50) DEFAULT 'pending',
-                        user1_confirmed BOOLEAN DEFAULT FALSE,
-                        user2_confirmed BOOLEAN DEFAULT FALSE,
+                        from_confirmed BOOLEAN DEFAULT FALSE,
+                        to_confirmed BOOLEAN DEFAULT FALSE,
                         meeting_confirmed_at TIMESTAMP,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        UNIQUE(user1_id, user2_id)
+                        UNIQUE(from_user_id, to_user_id)
                     )
                 ''')
                 print("✅ Таблица matches создана/проверена")
 
-            print("✅ База данных инициализирована успешно")
+            logging.info("✅ База данных инициализирована успешно")
 
         except Exception as e:
-            print(f"❌ Ошибка инициализации базы данных: {e}")
+            logging.error(f"❌ Ошибка инициализации базы данных: {e}")
             raise
 
 

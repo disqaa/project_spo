@@ -49,8 +49,15 @@ async def start_registration(message: Message, state: FSMContext):
             )
         return
 
+    # Добавляем информацию о использовании Telegram username
     await message.answer(
-        "Начинаем регистрацию!\n"
+        "⚠️ Внимание!\n\n"
+        "При регистрации мы сохраняем ваш реальный Telegram username (@никнейм).\n"
+        "Это позволит другим пользователям связаться с вами при взаимных лайках.\n\n"
+        "Если вы не хотите делиться своим Telegram username, вы можете:\n"
+        "1. Изменить его в настройках Telegram\n"
+        "2. Пропустить этот шаг (но тогда связь будет ограничена)\n\n"
+        "Продолжаем регистрацию?\n"
         "Введите логин (от 3 до 20 символов, можно использовать буквы, цифры, точку и _):",
         reply_markup=get_cancel_keyboard()
     )
@@ -113,13 +120,12 @@ async def process_password(message: Message, state: FSMContext):
         )
         return
 
-    password = message.text
+    password = message.text.strip()
 
     # Валидация пароля
-    is_valid, error_msg = is_valid_password(password)
-    if not is_valid:
+    if not is_valid_password(password):
         await message.answer(
-            f"❌ {error_msg}\n"
+            "❌ Пароль должен быть минимум 6 символов!\n"
             "Введите пароль еще раз:"
         )
         return
@@ -127,7 +133,8 @@ async def process_password(message: Message, state: FSMContext):
     await state.update_data(password=password)
     await message.answer(
         "✅ Пароль принят!\n"
-        "Теперь введите ваше имя:"
+        "Теперь введите ваше имя (от 2 до 50 символов):",
+        reply_markup=get_cancel_keyboard()
     )
     await state.set_state(RegistrationStates.waiting_for_first_name)
 
@@ -171,9 +178,9 @@ async def process_age(message: Message, state: FSMContext):
         )
         return
 
-    is_valid, age = is_valid_age(message.text)
+    is_valid_age_check, age = is_valid_age(message.text)
 
-    if not is_valid:
+    if not is_valid_age_check:
         await message.answer(
             "❌ Неверный возраст!\n"
             "Введите число от 1 до 120:"
@@ -295,10 +302,15 @@ async def process_photo(message: Message, state: FSMContext):
     # Получаем все данные
     data = await state.get_data()
 
+    # Добавляем реальный Telegram username
+    telegram_username = message.from_user.username
+    data['telegram_username'] = telegram_username
+
     # Формируем сообщение для подтверждения
     confirmation_text = (
         "📋 Проверьте ваши данные:\n\n"
-        f"👤 Логин: {data['username']}\n"
+        f"👤 Логин в боте: {data['username']}\n"
+        f"👤 Telegram username: @{telegram_username if telegram_username else 'Не указан'}\n"
         f"👤 Имя: {data['first_name']}\n"
         f"🎂 Возраст: {data['age']}\n"
     )
@@ -309,7 +321,9 @@ async def process_photo(message: Message, state: FSMContext):
     if data.get('about'):
         confirmation_text += f"📝 О себе: {data['about'][:100]}...\n"
 
-    confirmation_text += f"📷 Фото: отправлено\n\nВсё верно?"
+    confirmation_text += f"📷 Фото: отправлено\n\n"
+    confirmation_text += f"⚠️ Важно: Telegram username будет доступен другим пользователям при взаимных лайках.\n\n"
+    confirmation_text += "Всё верно?"
 
     await message.answer_photo(
         photo=data['photo_id'],
@@ -352,6 +366,9 @@ async def process_confirmation(callback: CallbackQuery, state: FSMContext):
         interests = data.get('interests', '')
         about = data.get('about', '')
 
+        # Получаем Telegram username
+        telegram_username = data.get('telegram_username', '')
+
         # Шифруем данные (если нужно)
         encrypted_first_name = encrypt_data(data['first_name'])
         encrypted_interests = encrypt_data(interests)
@@ -362,8 +379,9 @@ async def process_confirmation(callback: CallbackQuery, state: FSMContext):
             async with db.pool.acquire() as conn:
                 await conn.execute('''
                     INSERT INTO users 
-                    (telegram_id, username, password, first_name, age, interests, about, photo_path, photo_id, is_authenticated)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                    (telegram_id, username, password, first_name, age, interests, about, photo_path, photo_id, 
+                     is_authenticated, telegram_real_username)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                 ''',
                                    callback.from_user.id,
                                    data['username'],
@@ -374,10 +392,12 @@ async def process_confirmation(callback: CallbackQuery, state: FSMContext):
                                    encrypted_about,
                                    photo_path,
                                    data['photo_id'],
-                                   True
+                                   True,
+                                   telegram_username
                                    )
 
-            print(f"✅ Новый пользователь зарегистрирован: {data['username']}, Telegram ID: {callback.from_user.id}")
+            print(
+                f"✅ Новый пользователь зарегистрирован: {data['username']}, Telegram ID: {callback.from_user.id}, Telegram username: {telegram_username}")
 
         except Exception as e:
             print(f"❌ Ошибка при сохранении пользователя: {e}")
@@ -396,7 +416,8 @@ async def process_confirmation(callback: CallbackQuery, state: FSMContext):
             "Теперь вы авторизованы в системе.\n\n"
             f"👋 Добро пожаловать, {data['first_name']}!\n\n"
             "📢 Чтобы вас могли найти другие пользователи, "
-            "опубликуйте свою анкету в профиле.",
+            "опубликуйте свою анкету в профиле.\n\n"
+            f"🔗 Ваш Telegram username: @{telegram_username if telegram_username else 'Не указан'}",
             reply_markup=get_main_menu_keyboard(is_authenticated=True)
         )
 
@@ -510,20 +531,24 @@ async def process_login_password(message: Message, state: FSMContext):
         return
 
     if verify_password(message.text, salt, hashed_password):
-        # Обновляем данные пользователя
+        # Обновляем данные пользователя, включая Telegram username
+        telegram_username = message.from_user.username
+
         async with db.pool.acquire() as conn:
             await conn.execute('''
                 UPDATE users 
-                SET is_authenticated = TRUE, telegram_id = $1, last_login = CURRENT_TIMESTAMP
-                WHERE id = $2
-            ''', message.from_user.id, user_id)
+                SET is_authenticated = TRUE, telegram_id = $1, last_login = CURRENT_TIMESTAMP,
+                    telegram_real_username = $2
+                WHERE id = $3
+            ''', message.from_user.id, telegram_username, user_id)
 
         # Дешифруем имя для приветствия
         decrypted_first_name = decrypt_data(user['first_name'])
 
         await message.answer(
             f"✅ Вход выполнен успешно!\n"
-            f"👋 Добро пожаловать, {decrypted_first_name}!",
+            f"👋 Добро пожаловать, {decrypted_first_name}!\n\n"
+            f"🔗 Ваш Telegram username обновлен: @{telegram_username if telegram_username else 'Не указан'}",
             reply_markup=get_main_menu_keyboard(is_authenticated=True)
         )
     else:

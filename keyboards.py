@@ -161,16 +161,25 @@ def get_search_filters_keyboard():
     builder.add(KeyboardButton(text="🧹 Сбросить фильтры"))
     builder.add(KeyboardButton(text="🔍 Поиск с фильтрами"))
     builder.add(KeyboardButton(text="🏠 Главное меню"))
+    builder.add(KeyboardButton(text="⚙️ Настройки username"))
     builder.adjust(2)
     return builder.as_markup(resize_keyboard=True)
 
 
-# Клавиатура для встреч
+
+
+# Клавиатура для предстоящих встреч (отправленные запросы)
+def get_upcoming_meetings_keyboard(match_id: int):
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(text="❌ Отменить запрос", callback_data=f"cancel_meeting_{match_id}"))
+    return builder.as_markup()
+
+# Обновленная клавиатура для встреч
 def get_meetings_keyboard():
     builder = ReplyKeyboardBuilder()
-    builder.add(KeyboardButton(text="📅 Предстоящие встречи"))
+    builder.add(KeyboardButton(text="📝 Запросы на встречу"))  # Полученные запросы
+    builder.add(KeyboardButton(text="📅 Предстоящие встречи"))  # Отправленные запросы
     builder.add(KeyboardButton(text="✅ Подтвержденные встречи"))
-    builder.add(KeyboardButton(text="📝 Запросы на встречу"))
     builder.add(KeyboardButton(text="🏠 Главное меню"))
     builder.adjust(2)
     return builder.as_markup(resize_keyboard=True)
