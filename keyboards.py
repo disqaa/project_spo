@@ -12,6 +12,7 @@ def get_main_menu_keyboard(is_authenticated: bool = False):
     else:
         builder.add(KeyboardButton(text="👤 Профиль"))
         builder.add(KeyboardButton(text="🔍 Начать поиск"))
+        builder.add(KeyboardButton(text="🗺️ Карта встреч"))
         builder.add(KeyboardButton(text="⚙️ Фильтры поиска"))
         builder.add(KeyboardButton(text="🤝 Мои встречи"))
         builder.add(KeyboardButton(text="📊 Статистика"))
@@ -181,5 +182,73 @@ def get_meetings_keyboard():
     builder.add(KeyboardButton(text="📅 Предстоящие встречи"))  # Отправленные запросы
     builder.add(KeyboardButton(text="✅ Подтвержденные встречи"))
     builder.add(KeyboardButton(text="🏠 Главное меню"))
+    builder.adjust(2)
+    return builder.as_markup(resize_keyboard=True)
+
+
+def get_meeting_types_keyboard():
+    builder = ReplyKeyboardBuilder()
+    builder.add(KeyboardButton(text="☕ Кофе/Общение"))
+    builder.add(KeyboardButton(text="🎮 Настольные игры"))
+    builder.add(KeyboardButton(text="🎬 Кино/Обсуждение"))
+    builder.add(KeyboardButton(text="🏃 Спорт/Активность"))
+    builder.add(KeyboardButton(text="💼 Бизнес/Нетворкинг"))
+    builder.add(KeyboardButton(text="🎨 Творчество/Хобби"))
+    builder.add(KeyboardButton(text="❌ Отмена"))
+    builder.adjust(2)
+    return builder.as_markup(resize_keyboard=True)
+
+
+# Клавиатура для меню карты
+def get_map_menu_keyboard():
+    builder = ReplyKeyboardBuilder()
+    builder.add(KeyboardButton(text="📋 Список заведений"))
+    builder.add(KeyboardButton(text="📅 Создать встречу"))
+    builder.add(KeyboardButton(text="🗺️ Мои встречи на карте"))
+    builder.add(KeyboardButton(text="🏠 Главное меню"))
+    builder.adjust(2)
+    return builder.as_markup(resize_keyboard=True)
+
+
+# Клавиатура для списка заведений
+def get_places_list_keyboard():
+    builder = ReplyKeyboardBuilder()
+    builder.add(KeyboardButton(text="📍 Открыть карту"))
+    builder.add(KeyboardButton(text="📅 Создать встречу"))
+    builder.add(KeyboardButton(text="🗺️ Назад в меню карты"))
+    builder.adjust(2)
+    return builder.as_markup(resize_keyboard=True)
+
+
+# Инлайн клавиатура для деталей заведения
+def get_place_details_keyboard(place_id: int):
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(
+        text="📅 Создать встречу здесь",
+        callback_data=f"create_here_{place_id}"
+    ))
+    builder.add(InlineKeyboardButton(
+        text="📍 Посмотреть на карте",
+        callback_data=f"show_on_map_{place_id}"
+    ))
+    return builder.as_markup()
+
+
+# Обновляем главное меню (добавляем кнопку карты)
+def get_main_menu_keyboard(is_authenticated: bool = False):
+    builder = ReplyKeyboardBuilder()
+
+    if not is_authenticated:
+        builder.add(KeyboardButton(text="🔐 Регистрация"))
+        builder.add(KeyboardButton(text="🚪 Войти"))
+    else:
+        builder.add(KeyboardButton(text="👤 Профиль"))
+        builder.add(KeyboardButton(text="🔍 Начать поиск"))
+        builder.add(KeyboardButton(text="🗺️ Карта встреч"))  # Новая кнопка
+        builder.add(KeyboardButton(text="⚙️ Фильтры поиска"))
+        builder.add(KeyboardButton(text="🤝 Мои встречи"))
+        builder.add(KeyboardButton(text="📊 Статистика"))
+        builder.add(KeyboardButton(text="🚪 Выйти"))
+
     builder.adjust(2)
     return builder.as_markup(resize_keyboard=True)

@@ -1,3 +1,5 @@
+# main.py - упрощенная версия без Flask для начала
+
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher
@@ -7,7 +9,7 @@ from aiogram.client.default import DefaultBotProperties
 
 from config import config
 from database import db
-from handlers import start, auth, profile, search, activity, matches
+from handlers import start, auth, profile, search, activity, matches, map
 
 # Настройка логирования
 logging.basicConfig(
@@ -22,13 +24,13 @@ async def main():
     logger.info("Инициализация базы данных...")
     await db.init_db()
 
-    # Инициализация бота с default properties
+    # Инициализация бота
     bot = Bot(
         token=config.BOT_TOKEN,
         default=DefaultBotProperties(parse_mode="HTML")
     )
 
-    # Создаем диспетчер с хранилищем состояний в памяти
+    # Создаем диспетчер
     storage = MemoryStorage()
     dp = Dispatcher(
         storage=storage,
@@ -41,17 +43,15 @@ async def main():
     dp.include_router(profile.router)
     dp.include_router(activity.router)
     dp.include_router(search.router)
-    dp.include_router(matches.router)  # Новый роутер для встреч
+    dp.include_router(matches.router)
+    dp.include_router(map.router)  # Новый роутер карты
 
     # Удаляем вебхук (если был)
     await bot.delete_webhook(drop_pending_updates=True)
 
     # Запускаем поллинг
     logger.info("Бот запущен!")
-    try:
-        await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
-    finally:
-        await bot.session.close()
+    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
 
 if __name__ == "__main__":

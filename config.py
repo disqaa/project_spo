@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+
+
 class Config:
     BOT_TOKEN = os.getenv("BOT_TOKEN")
 
@@ -14,8 +16,9 @@ class Config:
     DB_USER = os.getenv("DB_USER", "postgres")
     DB_PASSWORD = os.getenv("DB_PASSWORD", "")
 
-    # Create database URL for asyncpg
-    DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    # WebApp configuration
+    WEBAPP_URL = os.getenv("WEBAPP_URL", "https://your-domain.ngrok.io/webapp")
+    NGROK_AUTH_TOKEN = os.getenv("NGROK_AUTH_TOKEN", "")
 
     # Admin ID (optional)
     ADMIN_ID = os.getenv("ADMIN_ID", "")
@@ -24,5 +27,12 @@ class Config:
     UPLOAD_DIR = "uploads"
     PROFILE_PHOTOS_DIR = "uploads/profile_photos"
 
-
 config = Config()
+
+
+# config.py - дополняем
+
+
+
+
+

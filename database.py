@@ -111,6 +111,61 @@ class Database:
                     )
                 ''')
                 print("✅ Таблица matches создана/проверена")
+                await conn.execute('''
+                                CREATE TABLE IF NOT EXISTS places (
+                                    id SERIAL PRIMARY KEY,
+                                    name VARCHAR(255) NOT NULL,
+                                    address VARCHAR(500) NOT NULL,
+                                    latitude DECIMAL(10, 8) NOT NULL,
+                                    longitude DECIMAL(11, 8) NOT NULL,
+                                    category VARCHAR(100) NOT NULL,
+                                    description TEXT,
+                                    opening_hours VARCHAR(200),
+                                    phone VARCHAR(50),
+                                    website VARCHAR(255),
+                                    rating DECIMAL(3, 2) DEFAULT 0,
+                                    is_active BOOLEAN DEFAULT TRUE,
+                                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                                )
+                            ''')
+                logging.info("✅ Таблица places создана/проверена")
+
+                # Таблица заявок на встречи в заведениях
+                await conn.execute('''
+                                CREATE TABLE IF NOT EXISTS place_meetings (
+                                    id SERIAL PRIMARY KEY,
+                                    place_id INTEGER NOT NULL REFERENCES places(id) ON DELETE CASCADE,
+                                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                                    meeting_time TIMESTAMP NOT NULL,
+                                    description TEXT NOT NULL,
+                                    interest VARCHAR(100) NOT NULL,
+                                    max_participants INTEGER DEFAULT 2,
+                                    current_participants INTEGER DEFAULT 1,
+                                    status VARCHAR(50) DEFAULT 'active',
+                                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                    telegram_message_id BIGINT,  -- ID сообщения в Telegram
+                                    CONSTRAINT unique_user_place_time UNIQUE(user_id, place_id, meeting_time)
+                                )
+                            ''')
+                logging.info("✅ Таблица place_meetings создана/проверена")
+
+                # Таблица участников встреч
+                await conn.execute('''
+                                CREATE TABLE IF NOT EXISTS meeting_participants (
+                                    id SERIAL PRIMARY KEY,
+                                    meeting_id INTEGER NOT NULL REFERENCES place_meetings(id) ON DELETE CASCADE,
+                                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                                    status VARCHAR(50) DEFAULT 'pending',  -- pending, accepted, rejected
+                                    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                    UNIQUE(meeting_id, user_id)
+                                )
+                            ''')
+                logging.info("✅ Таблица meeting_participants создана/проверена")
+
+                # Добавляем индексы для быстрого поиска
+                await conn.execute('CREATE INDEX IF NOT EXISTS idx_places_location ON places(latitude, longitude)')
+                await conn.execute('CREATE INDEX IF NOT EXISTS idx_place_meetings_time ON place_meetings(meeting_time)')
+                await conn.execute('CREATE INDEX IF NOT EXISTS idx_place_meetings_place ON place_meetings(place_id)')
 
             logging.info("✅ База данных инициализирована успешно")
 
