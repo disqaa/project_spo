@@ -13,6 +13,7 @@ def get_main_menu_keyboard(is_authenticated: bool = False):
         builder.add(KeyboardButton(text="👤 Профиль"))
         builder.add(KeyboardButton(text="🔍 Начать поиск"))
         builder.add(KeyboardButton(text="⚙️ Фильтры поиска"))
+        builder.add(KeyboardButton(text="🗺️ Карта встреч"))
         builder.add(KeyboardButton(text="🤝 Мои встречи"))
         builder.add(KeyboardButton(text="📊 Статистика"))
         builder.add(KeyboardButton(text="🚪 Выйти"))
@@ -183,3 +184,14 @@ def get_meetings_keyboard():
     builder.add(KeyboardButton(text="🏠 Главное меню"))
     builder.adjust(2)
     return builder.as_markup(resize_keyboard=True)
+
+
+# Клавиатура для карты встреч
+def get_map_keyboard():
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(text="📍 Открыть карту", url="http://localhost:8000"))
+    builder.add(InlineKeyboardButton(text="📝 Создать заявку", callback_data="create_map_meeting"))
+    builder.add(InlineKeyboardButton(text="📋 Мои заявки", callback_data="my_map_meetings"))
+    builder.add(InlineKeyboardButton(text="🏠 В главное меню", callback_data="back_to_menu"))
+    builder.adjust(2)
+    return builder.as_markup()

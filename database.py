@@ -53,7 +53,7 @@ class Database:
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         last_login TIMESTAMP,
                         last_search TIMESTAMP,
-                        telegram_real_username VARCHAR(255)  -- ДОБАВЛЕНО: реальный Telegram username
+                        telegram_real_username VARCHAR(255)
                     )
                 ''')
                 logging.info("✅ Таблица users создана/проверена")
@@ -101,7 +101,7 @@ class Database:
                         id SERIAL PRIMARY KEY,
                         from_user_id BIGINT NOT NULL REFERENCES users(id),
                         to_user_id BIGINT NOT NULL REFERENCES users(id),
-                        activity_id BIGINT REFERENCES users(id), -- Чья активность используется
+                        activity_id BIGINT REFERENCES users(id),
                         status VARCHAR(50) DEFAULT 'pending',
                         from_confirmed BOOLEAN DEFAULT FALSE,
                         to_confirmed BOOLEAN DEFAULT FALSE,
@@ -111,6 +111,58 @@ class Database:
                     )
                 ''')
                 print("✅ Таблица matches создана/проверена")
+
+                # Создаем таблицу для заведений на карте
+                await conn.execute('''
+                    CREATE TABLE IF NOT EXISTS venues (
+                        id SERIAL PRIMARY KEY,
+                        name VARCHAR(255) NOT NULL,
+                        category VARCHAR(100) NOT NULL,
+                        latitude DECIMAL(10, 8) NOT NULL,
+                        longitude DECIMAL(11, 8) NOT NULL,
+                        address TEXT,
+                        description TEXT,
+                        working_hours TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        is_active BOOLEAN DEFAULT TRUE
+                    )
+                ''')
+                logging.info("✅ Таблица venues создана/проверена")
+
+                # Создаем таблицу для заявок на встречи на карте
+                await conn.execute('''
+                    CREATE TABLE IF NOT EXISTS map_meeting_requests (
+                        id SERIAL PRIMARY KEY,
+                        user_id BIGINT NOT NULL REFERENCES users(id),
+                        venue_id BIGINT REFERENCES venues(id),
+                        title VARCHAR(255) NOT NULL,
+                        description TEXT,
+                        meeting_time VARCHAR(100) NOT NULL,
+                        max_participants INTEGER DEFAULT 2,
+                        current_participants INTEGER DEFAULT 1,
+                        latitude DECIMAL(10, 8),
+                        longitude DECIMAL(11, 8),
+                        status VARCHAR(50) DEFAULT 'active',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        expires_at TIMESTAMP,
+                        telegram_message_id VARCHAR(100),
+                        telegram_chat_id BIGINT
+                    )
+                ''')
+                logging.info("✅ Таблица map_meeting_requests создана/проверена")
+
+                # Создаем таблицу для участников встреч
+                await conn.execute('''
+                    CREATE TABLE IF NOT EXISTS map_meeting_participants (
+                        id SERIAL PRIMARY KEY,
+                        meeting_id BIGINT NOT NULL REFERENCES map_meeting_requests(id),
+                        user_id BIGINT NOT NULL REFERENCES users(id),
+                        status VARCHAR(50) DEFAULT 'pending',
+                        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(meeting_id, user_id)
+                    )
+                ''')
+                logging.info("✅ Таблица map_meeting_participants создана/проверена")
 
             logging.info("✅ База данных инициализирована успешно")
 

@@ -75,4 +75,4 @@ def encrypt_data(data: str) -> str:
 
 # Дешифрование данных
 def decrypt_data(encrypted_data: str) -> str:
-    return encrypted_data  # Временно отключаем шифрование
+    return encrypted_data

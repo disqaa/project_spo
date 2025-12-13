@@ -25,7 +25,6 @@ class FilterStates(StatesGroup):
 
 
 async def safe_edit_message(message, **kwargs):
-    """Безопасное редактирование сообщения с обработкой ошибок"""
     try:
         if 'caption' in kwargs:
             # Пытаемся редактировать caption
@@ -71,7 +70,6 @@ async def safe_edit_message(message, **kwargs):
 
 
 def get_telegram_link(telegram_username: str, user_id: int) -> str:
-    """Получить ссылку на Telegram пользователя"""
     if telegram_username and telegram_username != 'None' and telegram_username != 'null' and telegram_username != '':
         return f"https://t.me/{telegram_username}"
     else:
@@ -79,7 +77,6 @@ def get_telegram_link(telegram_username: str, user_id: int) -> str:
 
 
 def normalize_filters(filters: dict) -> dict:
-    """Нормализует фильтры для поиска"""
     if not filters:
         return {}
 
@@ -1296,120 +1293,3 @@ async def show_statistics(message: Message):
     )
 
 
-# ============================================
-# ТЕСТОВЫЕ КОМАНДЫ ДЛЯ ОТЛАДКИ (удалить в продакшене)
-# ============================================
-
-@router.message(F.text == "/reset_views_test")
-async def reset_views_test(message: Message, state: FSMContext):
-    """Сброс просмотров и лайков для текущего пользователя"""
-    try:
-        await state.clear()
-
-        async with db.pool.acquire() as conn:
-            user = await conn.fetchrow(
-                "SELECT id FROM users WHERE telegram_id = $1",
-                message.from_user.id
-            )
-
-            if user:
-                deleted_views = await conn.execute(
-                    "DELETE FROM profile_views WHERE viewer_id = $1",
-                    user['id']
-                )
-                deleted_likes = await conn.execute(
-                    "DELETE FROM likes WHERE from_user_id = $1",
-                    user['id']
-                )
-                deleted_matches = await conn.execute(
-                    "DELETE FROM matches WHERE from_user_id = $1",
-                    user['id']
-                )
-                await message.answer(
-                    f"✅ Просмотры, лайки и встречи сброшены!\n"
-                    f"• Удалено просмотров: {deleted_views.split()[-1] if deleted_views else '0'}\n"
-                    f"• Удалено лайков: {deleted_likes.split()[-1] if deleted_likes else '0'}\n"
-                    f"• Удалено встреч: {deleted_matches.split()[-1] if deleted_matches else '0'}"
-                )
-            else:
-                await message.answer("❌ Вы не найдены в базе данных")
-
-    except Exception as e:
-        logging.error(f"❌ Ошибка при сбросе просмотров: {e}")
-        await message.answer("❌ Ошибка при сбросе просмотров")
-
-
-@router.message(F.text == "/check_users")
-async def check_users(message: Message):
-    """Проверка наличия опубликованных пользователей"""
-    try:
-        async with db.pool.acquire() as conn:
-            # Проверяем текущего пользователя
-            current = await conn.fetchrow(
-                "SELECT id, username, first_name, is_published, is_authenticated, is_active, activity_interest, telegram_real_username FROM users WHERE telegram_id = $1",
-                message.from_user.id
-            )
-
-            if not current:
-                await message.answer("❌ Вы не найдены в базе данных")
-                return
-
-            # Считаем всех опубликованных пользователей кроме себя
-            others = await conn.fetch('''
-                SELECT id, username, first_name, is_published, is_authenticated, is_active, 
-                       activity_interest, activity_location, activity_time, telegram_id, telegram_real_username
-                FROM users 
-                WHERE telegram_id != $1
-                ORDER BY is_published DESC, id
-            ''', message.from_user.id)
-
-            # Дешифруем имя текущего пользователя
-            current_name = decrypt_data(current['first_name']) if current['first_name'] else "без имени"
-
-            text = f"👤 Ваш профиль:\n"
-            text += f"• ID: {current['id']}\n"
-            text += f"• Имя: {current_name}\n"
-            text += f"• Telegram ID: {current['telegram_id']}\n"
-            text += f"• Логин в боте: @{current['username']}\n"
-            text += f"• Telegram username: @{current['telegram_real_username'] if current['telegram_real_username'] else 'Не указан'}\n"
-            text += f"• Активность: {current['activity_interest'] or 'Не указана'}\n"
-            text += f"• Опубликован: {'✅ Да' if current['is_published'] else '❌ Нет'}\n"
-            text += f"• Авторизован: {'✅ Да' if current['is_authenticated'] else '❌ Нет'}\n"
-            text += f"• Активен: {'✅ Да' if current['is_active'] else '❌ Нет'}\n\n"
-
-            text += f"📊 Всего других пользователей: {len(others)}\n\n"
-
-            if others:
-                text += "📋 Список других пользователей:\n"
-                published_count = 0
-                with_activity_count = 0
-
-                for i, user in enumerate(others, 1):
-                    decrypted_name = decrypt_data(user['first_name']) if user['first_name'] else "без имени"
-                    status = "✅" if user['is_published'] else "❌"
-                    activity_status = "🎯" if user['activity_interest'] else "❌"
-
-                    if user['is_published'] and user['is_authenticated'] and user['is_active']:
-                        published_count += 1
-
-                    if user['activity_interest']:
-                        with_activity_count += 1
-
-                    text += f"{i}. {status} {activity_status} {decrypted_name} (Telegram: @{user['telegram_real_username'] if user['telegram_real_username'] else user['username']})"
-
-                    if user['activity_interest']:
-                        text += f" - {user['activity_interest']}\n"
-                    else:
-                        text += " - Без активности\n"
-
-            text += f"\n📈 Доступно для поиска: {published_count} пользователей\n"
-            text += f"🎯 С заполненной активностью: {with_activity_count} пользователей"
-
-            if published_count == 0:
-                text += "\n\n⚠️ Для тестирования создайте еще одного пользователя и опубликуйте его анкету!"
-
-        await message.answer(text)
-
-    except Exception as e:
-        logging.error(f"❌ Ошибка при проверке пользователей: {e}")
-        await message.answer("❌ Ошибка при проверке пользователей")

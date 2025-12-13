@@ -4,7 +4,6 @@ from config import config
 
 
 async def list_all_users():
-    """Вывести список всех пользователей"""
     try:
         conn = await asyncpg.connect(
             user=config.DB_USER,
