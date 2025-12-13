@@ -3,10 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MeetMap - Мини-аппа</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <title>MeetMap - Карта встреч</title>
+
+    <!-- ЛОКАЛЬНЫЕ ФАЙЛЫ Leaflet -->
+    <link rel="stylesheet" href="/static/leaflet/leaflet.css" />
+    <script src="/static/leaflet/leaflet.js"></script>
+
+    <!-- Telegram Web App JS -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
     <style>
         * {
             margin: 0;
@@ -18,15 +23,9 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #ffffff;
-            overflow-x: hidden;
             height: 100vh;
-            max-height: 100vh;
-        }
-
-        #map {
-            width: 100%;
-            height: 100vh;
-            z-index: 1;
+            width: 100vw;
+            overflow: hidden;
         }
 
         .header {
@@ -39,17 +38,16 @@
             padding: 15px 20px;
             z-index: 1000;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .header-content {
+            height: 60px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
         }
 
         .header h1 {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 600;
+            margin: 0;
         }
 
         .back-button {
@@ -66,6 +64,15 @@
             font-size: 20px;
         }
 
+        #map {
+            position: fixed;
+            top: 60px;
+            bottom: 60px;
+            left: 0;
+            right: 0;
+            z-index: 1;
+        }
+
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -77,6 +84,7 @@
             padding: 10px 0;
             box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
             z-index: 1000;
+            height: 60px;
         }
 
         .nav-button {
@@ -88,7 +96,7 @@
             color: #666;
             font-size: 12px;
             cursor: pointer;
-            padding: 8px;
+            padding: 5px;
             flex: 1;
         }
 
@@ -98,21 +106,17 @@
 
         .nav-button i {
             font-size: 20px;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
 
         .meeting-card {
             background: white;
-            border-radius: 15px;
+            border-radius: 12px;
             margin: 10px;
             padding: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            cursor: pointer;
+            border: 1px solid #e0e0e0;
         }
 
         .meeting-title {
@@ -125,7 +129,7 @@
         .meeting-meta {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             margin-bottom: 8px;
             font-size: 14px;
             color: #666;
@@ -133,7 +137,7 @@
 
         .meeting-time {
             background: #e3f2fd;
-            padding: 4px 8px;
+            padding: 4px 10px;
             border-radius: 12px;
             font-size: 12px;
             color: #1976d2;
@@ -142,6 +146,7 @@
         .meeting-location {
             color: #667eea;
             font-weight: 500;
+            font-size: 14px;
         }
 
         .meeting-description {
@@ -160,9 +165,6 @@
         .participants {
             font-size: 13px;
             color: #666;
-            display: flex;
-            align-items: center;
-            gap: 4px;
         }
 
         .join-btn {
@@ -180,16 +182,35 @@
             background: #4caf50;
         }
 
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #666;
+        .meetings-list-container {
+            position: fixed;
+            top: 60px;
+            bottom: 60px;
+            left: 0;
+            right: 0;
+            overflow-y: auto;
+            background: white;
+            z-index: 999;
+            padding: 15px;
         }
 
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
+        .create-meeting-btn {
+            position: fixed;
+            bottom: 70px;
+            right: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            z-index: 999;
         }
 
         .meeting-details {
@@ -199,10 +220,10 @@
             right: 0;
             background: white;
             border-radius: 20px 20px 0 0;
-            padding: 20px;
+            padding: 25px;
             box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
-            z-index: 1001;
-            max-height: 80vh;
+            z-index: 2000;
+            max-height: 85vh;
             overflow-y: auto;
             transform: translateY(100%);
             transition: transform 0.3s ease;
@@ -223,262 +244,693 @@
             cursor: pointer;
         }
 
-        .create-meeting-btn {
+        .modal-overlay {
             position: fixed;
-            bottom: 80px;
-            right: 20px;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px 16px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-input, .form-textarea, .form-select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        .form-button {
+            width: 100%;
+            padding: 14px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            width: 56px;
-            height: 56px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #666;
+        }
+
+        .error-message {
+            text-align: center;
+            padding: 40px 20px;
+            color: #f44336;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .custom-marker {
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            border: 2px solid white;
+        }
+
+        .marker-coffee { background: #ffcdd2; }
+        .marker-sports { background: #c8e6c9; }
+        .marker-cinema { background: #e1bee7; }
+        .marker-games { background: #ffe0b2; }
+
+        .filter-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            background: white;
+            color: #333;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .selected-location-marker {
+            background: #ff5722;
+            color: white;
+        }
+
+        .location-preview {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .venue-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .venue-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+
+        .venue-item:hover {
+            background: #f0f0f0;
+        }
+
+        .venue-item.active {
+            background: #e3f2fd;
+            border-left: 3px solid #1976d2;
+        }
+
+        .map-marker {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 87, 34, 0.8);
+            border: 3px solid white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 24px;
             cursor: pointer;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-            z-index: 999;
+            transition: all 0.3s ease;
         }
 
-        .filter-chip {
-            display: inline-block;
-            background: #f0f0f0;
-            padding: 6px 12px;
-            border-radius: 20px;
-            margin: 4px;
-            font-size: 14px;
-            cursor: pointer;
+        .map-marker:hover {
+            transform: scale(1.1);
+            background: rgba(255, 87, 34, 1);
         }
 
-        .filter-chip.active {
-            background: #667eea;
-            color: white;
+        .map-marker.pulsing {
+            animation: pulse 2s infinite;
         }
 
-        .filters-container {
-            padding: 10px;
-            overflow-x: auto;
-            white-space: nowrap;
-        }
-
-        /* Адаптивные стили для Telegram Web App */
-        @media (max-height: 600px) {
-            .header {
-                padding: 10px 15px;
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 87, 34, 0.7);
             }
-
-            .header h1 {
-                font-size: 18px;
+            70% {
+                box-shadow: 0 0 0 10px rgba(255, 87, 34, 0);
             }
-
-            .meeting-card {
-                padding: 12px;
-                margin: 8px;
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 87, 34, 0);
             }
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <div class="header-content">
-            <button class="back-button" onclick="goBack()">←</button>
-            <h1>🗺️ Карта встреч</h1>
-            <div style="width: 40px;"></div> <!-- Для симметрии -->
-        </div>
+        <button class="back-button" onclick="goBack()">←</button>
+        <h1 id="pageTitle">🗺️ Карта встреч</h1>
+        <div style="width: 40px;"></div>
     </div>
 
     <div id="map"></div>
 
     <div class="bottom-nav">
         <button class="nav-button active" onclick="showMapView()">
-            <div>🗺️</div>
+            <span>🗺️</span>
             <span>Карта</span>
         </button>
         <button class="nav-button" onclick="showListingsView()">
-            <div>📋</div>
+            <span>📋</span>
             <span>Список</span>
         </button>
-        <button class="nav-button" onclick="showMyMeetings()">
-            <div>👤</div>
+        <button class="nav-button" onclick="showMyMeetingsView()">
+            <span>👤</span>
             <span>Мои</span>
         </button>
-        <button class="nav-button" onclick="showFilters()">
-            <div>⚙️</div>
+        <button class="nav-button" onclick="showFiltersView()">
+            <span>⚙️</span>
             <span>Фильтры</span>
         </button>
     </div>
 
-    <button class="create-meeting-btn" onclick="createMeeting()">
+    <button class="create-meeting-btn" onclick="openCreateMeetingModal()">
         +
     </button>
 
-    <!-- Контейнер для списка встреч -->
-    <div id="listingsView" style="display: none; position: fixed; top: 70px; bottom: 70px; left: 0; right: 0; overflow-y: auto; background: white; z-index: 999;">
+    <div id="listingsView" class="meetings-list-container" style="display: none;">
         <div id="meetingsList"></div>
     </div>
 
-    <!-- Фильтры -->
-    <div id="filtersView" style="display: none; position: fixed; top: 70px; bottom: 70px; left: 0; right: 0; overflow-y: auto; background: white; z-index: 999; padding: 20px;">
-        <h3 style="margin-bottom: 15px;">Фильтры</h3>
-        <div class="filters-container">
-            <span class="filter-chip active" onclick="toggleFilter('all')">Все</span>
-            <span class="filter-chip" onclick="toggleFilter('coffee')">☕ Кофе</span>
-            <span class="filter-chip" onclick="toggleFilter('sports')">🏃 Спорт</span>
-            <span class="filter-chip" onclick="toggleFilter('cinema')">🎬 Кино</span>
-            <span class="filter-chip" onclick="toggleFilter('games')">🎮 Игры</span>
-        </div>
+    <div id="myMeetingsView" class="meetings-list-container" style="display: none;">
+        <h2 style="margin-bottom: 20px; font-size: 18px;">👤 Мои встречи</h2>
+        <div id="myMeetingsList"></div>
+    </div>
 
-        <h3 style="margin: 20px 0 15px;">Время</h3>
-        <div class="filters-container">
-            <span class="filter-chip" onclick="toggleTimeFilter('today')">👋 Сегодня</span>
-            <span class="filter-chip" onclick="toggleTimeFilter('tomorrow')">📅 Завтра</span>
-            <span class="filter-chip" onclick="toggleTimeFilter('evening')">🌆 Вечером</span>
-            <span class="filter-chip" onclick="toggleTimeFilter('weekend')">🌞 Выходные</span>
+    <div id="filtersView" class="meetings-list-container" style="display: none;">
+        <h2 style="margin-bottom: 20px; font-size: 18px;">⚙️ Фильтры</h2>
+        <div style="margin-bottom: 25px;">
+            <h3 style="margin-bottom: 10px; font-size: 16px;">Категория:</h3>
+            <div class="filter-buttons">
+                <button class="filter-btn active" onclick="setCategoryFilter('all')">Все</button>
+                <button class="filter-btn" onclick="setCategoryFilter('coffee')">☕ Кофе</button>
+                <button class="filter-btn" onclick="setCategoryFilter('sports')">🏃 Спорт</button>
+                <button class="filter-btn" onclick="setCategoryFilter('cinema')">🎬 Кино</button>
+                <button class="filter-btn" onclick="setCategoryFilter('games')">🎮 Игры</button>
+            </div>
         </div>
-
-        <button onclick="applyFilters()" style="width: 100%; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; margin-top: 20px; font-size: 16px; cursor: pointer;">
+        <button onclick="applyFilters()" class="form-button">
             Применить фильтры
         </button>
     </div>
 
-    <!-- Детали встречи -->
     <div id="meetingDetails" class="meeting-details">
         <button class="close-details" onclick="closeMeetingDetails()">×</button>
         <div id="meetingDetailsContent"></div>
     </div>
 
+    <div id="createMeetingModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">📝 Создать встречу</div>
+                <button class="close-modal" onclick="closeCreateMeetingModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="createMeetingForm">
+                    <div class="form-group">
+                        <label class="form-label">Название встречи *</label>
+                        <input type="text" class="form-input" id="meetingTitle" required
+                               placeholder="Например: Играем в настолки">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Описание</label>
+                        <textarea class="form-textarea" id="meetingDescription"
+                                  placeholder="Опишите встречу подробнее..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Категория *</label>
+                        <select class="form-select" id="meetingCategory" required>
+                            <option value="coffee">☕ Кофе/Бар</option>
+                            <option value="sports">🏃 Спорт</option>
+                            <option value="cinema">🎬 Кино</option>
+                            <option value="games">🎮 Игры</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Время *</label>
+                        <select class="form-select" id="meetingTime" required>
+                            <option value="👋 Сегодня">👋 Сегодня</option>
+                            <option value="📅 Завтра">📅 Завтра</option>
+                            <option value="🌆 Вечером">🌆 Вечером</option>
+                            <option value="🌅 Утром">🌅 Утром</option>
+                            <option value="🌞 В выходные">🌞 В выходные</option>
+                            <option value="⏰ Любое время">⏰ Любое время</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Место встречи *</label>
+                        <div class="location-preview" id="locationPreview">
+                            <div style="color: #666;">Кликните на карте, чтобы выбрать место</div>
+                        </div>
+
+                        <div id="venueSelection" style="display: none;">
+                            <div style="margin-bottom: 10px; font-size: 14px; color: #666;">
+                                Или выберите из списка:
+                            </div>
+                            <div class="venue-list" id="venueList">
+                                <!-- Список заведений будет загружен динамически -->
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 10px;">
+                            <input type="text" class="form-input" id="customLocation"
+                                   placeholder="Можно указать адрес вручную">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Максимум участников</label>
+                        <select class="form-select" id="maxParticipants">
+                            <option value="2">2 человека</option>
+                            <option value="3">3 человека</option>
+                            <option value="4" selected>4 человека</option>
+                            <option value="6">6 человек</option>
+                            <option value="10">10 человек</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="form-button" id="createMeetingBtn">
+                        Создать встречу
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Инициализация Telegram Web App
+        // Telegram Web App
         const tg = window.Telegram.WebApp;
         tg.expand();
         tg.enableClosingConfirmation();
 
-        // Параметры URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const meetingId = urlParams.get('meeting');
-        const userId = urlParams.get('user_id') || tg.initDataUnsafe.user?.id;
-        const mode = urlParams.get('mode');
+        if (tg.BackButton) {
+            tg.BackButton.show();
+            tg.BackButton.onClick(goBack);
+        }
+
+        // Глобальные переменные
+        let map = null;
+        let meetings = [];
+        let myMeetings = [];
+        let markers = [];
+        let selectedMarker = null;
+        let selectedLocation = null;
+        let selectedVenue = null;
+        let venues = [];
+
+        const activeFilters = { category: 'all', time: 'all' };
+        const currentUser = tg.initDataUnsafe.user || {};
+        const currentUserId = currentUser.id;
 
         // Инициализация карты
-        const map = L.map('map').setView([55.7558, 37.6173], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+        function initMap() {
+            console.log("🚀 Инициализация карты...");
 
-        let meetings = [];
-        let markers = [];
-        let activeFilters = {
-            category: 'all',
-            time: null
-        };
+            try {
+                // Устанавливаем путь к иконкам маркеров
+                delete L.Icon.Default.prototype._getIconUrl;
+                L.Icon.Default.mergeOptions({
+                    iconRetinaUrl: '/static/leaflet/images/marker-icon-2x.png',
+                    iconUrl: '/static/leaflet/images/marker-icon.png',
+                    shadowUrl: '/static/leaflet/images/marker-shadow.png',
+                });
+
+                // Создаем карту
+                const defaultCoords = [55.7558, 37.6173];
+                map = L.map('map', {
+                    center: defaultCoords,
+                    zoom: 13,
+                    zoomControl: true,
+                    attributionControl: true
+                });
+
+                // Добавляем тайлы OpenStreetMap
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 19
+                }).addTo(map);
+
+                // Обработчик клика по карте для выбора места
+                map.on('click', function(e) {
+                    selectLocation(e.latlng.lat, e.latlng.lng);
+                });
+
+                console.log("✅ Карта успешно инициализирована");
+
+                // Загружаем встречи
+                loadMeetings();
+                // Загружаем заведения
+                loadVenues();
+
+                // Обновляем размер карты
+                setTimeout(() => map.invalidateSize(), 100);
+
+            } catch (error) {
+                console.error("❌ Ошибка инициализации карты:", error);
+                document.getElementById('map').innerHTML = `
+                    <div class="error-message">
+                        <p>Ошибка загрузки карты</p>
+                        <button onclick="initMap()">Попробовать снова</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Выбрать место на карте
+        function selectLocation(lat, lng) {
+            selectedLocation = { lat, lng };
+            selectedVenue = null;
+
+            // Удаляем предыдущий маркер
+            if (selectedMarker) {
+                map.removeLayer(selectedMarker);
+            }
+
+            // Создаем красивый пульсирующий маркер
+            selectedMarker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'map-marker pulsing',
+                    html: '📍',
+                    iconSize: [50, 50],
+                    iconAnchor: [25, 50],
+                    popupAnchor: [0, -50]
+                }),
+                zIndexOffset: 1000
+            }).addTo(map);
+
+            // Добавляем всплывающую подсказку
+            selectedMarker.bindPopup(`
+                <div style="text-align: center; padding: 10px;">
+                    <strong>📍 Выбранное место</strong><br>
+                    <small>Координаты: ${lat.toFixed(6)}, ${lng.toFixed(6)}</small><br>
+                    <button onclick="clearSelectedLocation()"
+                            style="margin-top: 5px; padding: 5px 10px; background: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        Очистить
+                    </button>
+                </div>
+            `).openPopup();
+
+            // Центрируем карту на выбранном месте
+            map.setView([lat, lng], 16);
+
+            // Обновляем предпросмотр
+            updateLocationPreview();
+
+            tg.showAlert('✅ Место выбрано! Нажмите на маркер, чтобы очистить выбор.');
+        }
+
+        function clearSelectedLocation() {
+            if (selectedMarker) {
+                map.removeLayer(selectedMarker);
+                selectedMarker = null;
+            }
+            selectedLocation = null;
+            selectedVenue = null;
+            updateLocationPreview();
+            tg.showAlert('Место очищено');
+        }
+
+        // Обновить предпросмотр места
+        function updateLocationPreview() {
+            const preview = document.getElementById('locationPreview');
+
+            if (selectedVenue) {
+                preview.innerHTML = `
+                    <div style="font-weight: bold;">${escapeHtml(selectedVenue.name)}</div>
+                    <div style="color: #666; margin-top: 5px;">${escapeHtml(selectedVenue.address || '')}</div>
+                    <div style="color: #888; margin-top: 5px;">Координаты: ${selectedVenue.latitude.toFixed(6)}, ${selectedVenue.longitude.toFixed(6)}</div>
+                `;
+            } else if (selectedLocation) {
+                preview.innerHTML = `
+                    <div style="font-weight: bold;">📍 Выбранное место</div>
+                    <div style="color: #666; margin-top: 5px;">Координаты: ${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}</div>
+                    <div style="color: #888; margin-top: 5px;">Кликните на карте, чтобы изменить</div>
+                `;
+            } else {
+                preview.innerHTML = `
+                    <div style="color: #666;">Кликните на карте, чтобы выбрать место</div>
+                `;
+            }
+        }
+
+        // Загрузка заведений
+        async function loadVenues() {
+            try {
+                const response = await fetch('/api/venues');
+                if (!response.ok) throw new Error('HTTP error');
+
+                venues = await response.json();
+                console.log(`✅ Загружено ${venues.length} заведений`);
+
+                // Показываем заведения на карте
+                displayVenuesOnMap();
+
+            } catch (error) {
+                console.error('❌ Ошибка загрузки заведений:', error);
+            }
+        }
+
+        // Отображение заведений на карте
+        function displayVenuesOnMap() {
+            venues.forEach(venue => {
+                const icon = L.divIcon({
+                    className: 'custom-marker',
+                    html: getCategoryIcon(venue.category),
+                    iconSize: [30, 30]
+                });
+
+                const marker = L.marker([venue.latitude, venue.longitude], { icon })
+                    .addTo(map)
+                    .bindPopup(`
+                        <div style="min-width: 200px;">
+                            <div style="font-weight: bold;">${escapeHtml(venue.name)}</div>
+                            <div style="color: #666; margin: 5px 0;">${escapeHtml(venue.category)}</div>
+                            <div style="color: #666;">${escapeHtml(venue.address || '')}</div>
+                            <button onclick="selectVenue(${venue.id})"
+                                    style="width: 100%; padding: 8px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px;">
+                                Выбрать это место
+                            </button>
+                        </div>
+                    `);
+            });
+        }
+
+        // Выбрать заведение
+        function selectVenue(venueId) {
+            const venue = venues.find(v => v.id == venueId);
+            if (venue) {
+                selectedVenue = venue;
+                selectedLocation = { lat: venue.latitude, lng: venue.longitude };
+
+                // Удаляем предыдущий маркер
+                if (selectedMarker) {
+                    map.removeLayer(selectedMarker);
+                }
+
+                // Создаем новый маркер
+                selectedMarker = L.marker([venue.latitude, venue.longitude], {
+                    icon: L.divIcon({
+                        className: 'selected-location-marker',
+                        html: '📍',
+                        iconSize: [40, 40]
+                    })
+                }).addTo(map);
+
+                // Центрируем карту
+                map.setView([venue.latitude, venue.longitude], 15);
+
+                // Обновляем предпросмотр
+                updateLocationPreview();
+
+                tg.showAlert('Заведение выбрано!');
+            }
+        }
 
         // Загрузка встреч
         async function loadMeetings() {
             try {
-                showLoading(true);
+                console.log("📡 Загрузка встреч...");
+
                 const response = await fetch('/api/meetings');
+                if (!response.ok) throw new Error('HTTP error');
+
                 meetings = await response.json();
+                console.log(`✅ Загружено ${meetings.length} встреч`);
+
                 updateMapMarkers();
                 displayMeetingsList();
-                showLoading(false);
 
-                // Если в URL есть ID встречи, показываем ее
-                if (meetingId) {
-                    const meeting = meetings.find(m => m.id == meetingId);
-                    if (meeting) {
-                        showMeetingDetails(meeting);
-                        map.setView([meeting.latitude, meeting.longitude], 15);
-                    }
-                }
             } catch (error) {
-                console.error('Error loading meetings:', error);
-                showLoading(false);
+                console.error('❌ Ошибка загрузки встреч:', error);
+                meetings = [];
+                displayMeetingsList();
             }
         }
 
         // Обновление маркеров на карте
         function updateMapMarkers() {
-            // Удаляем старые маркеры
+            if (!map) return;
+
             markers.forEach(marker => map.removeLayer(marker));
             markers = [];
 
-            // Фильтруем встречи
-            let filteredMeetings = meetings;
-            if (activeFilters.category !== 'all') {
-                filteredMeetings = filteredMeetings.filter(m => m.venue_category === activeFilters.category);
-            }
-            if (activeFilters.time) {
-                filteredMeetings = filteredMeetings.filter(m => {
-                    if (activeFilters.time === 'today') return m.meeting_time.includes('Сегодня');
-                    if (activeFilters.time === 'tomorrow') return m.meeting_time.includes('Завтра');
-                    if (activeFilters.time === 'evening') return m.meeting_time.includes('Вечером');
-                    if (activeFilters.time === 'weekend') return m.meeting_time.includes('Выходные');
-                    return true;
-                });
-            }
+            meetings.forEach(meeting => {
+                try {
+                    const icon = L.divIcon({
+                        className: 'custom-marker',
+                        html: getCategoryIcon(meeting.category),
+                        iconSize: [40, 40]
+                    });
 
-            // Добавляем маркеры
-            filteredMeetings.forEach(meeting => {
-                const marker = L.marker([meeting.latitude, meeting.longitude], {
-                    icon: L.divIcon({
-                        className: 'meeting-marker',
-                        html: getMarkerIcon(meeting.venue_category),
-                        iconSize: [36, 36],
-                        iconAnchor: [18, 36]
-                    })
-                }).addTo(map);
+                    const marker = L.marker([meeting.latitude, meeting.longitude], { icon })
+                        .addTo(map)
+                        .bindPopup(createMeetingPopup(meeting));
 
-                marker.bindPopup(`
-                    <div style="padding: 10px; min-width: 200px;">
-                        <strong>${meeting.title}</strong><br>
-                        <small>${meeting.meeting_time}</small><br>
-                        <p style="margin: 5px 0;">${meeting.description || ''}</p>
-                        <p>👤 ${meeting.first_name} (${meeting.age} лет)</p>
-                        <button onclick="window.showMeetingDetails(${JSON.stringify(meeting)})"
-                                style="width: 100%; background: #667eea; color: white; border: none; padding: 8px; border-radius: 5px; margin-top: 5px; cursor: pointer;">
-                            Подробнее
-                        </button>
-                    </div>
-                `);
-
-                marker.on('click', () => showMeetingDetails(meeting));
-                markers.push(marker);
+                    marker.on('click', () => showMeetingDetails(meeting));
+                    markers.push(marker);
+                } catch (error) {
+                    console.error('Ошибка добавления маркера:', error);
+                }
             });
         }
 
-        // Получение иконки для маркера
-        function getMarkerIcon(category) {
-            const icons = {
-                'coffee': '☕',
-                'sports': '🏃',
-                'cinema': '🎬',
-                'games': '🎮'
-            };
+        // Создание всплывающего окна
+        function createMeetingPopup(meeting) {
+            return `
+                <div style="min-width: 250px;">
+                    <div style="font-weight: bold;">${escapeHtml(meeting.title)}</div>
+                    <div style="color: #666; margin: 5px 0;">
+                        <span style="background: #e3f2fd; padding: 4px 8px; border-radius: 12px; font-size: 12px;">
+                            ${escapeHtml(meeting.meeting_time)}
+                        </span>
+                    </div>
+                    <div style="margin: 5px 0;">👤 ${escapeHtml(meeting.first_name)}</div>
+                    <div style="margin: 5px 0;">👥 ${meeting.current_participants}/${meeting.max_participants}</div>
+                    <button onclick="joinMeetingFromPopup(${meeting.id})"
+                            style="width: 100%; padding: 8px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 5px;">
+                        Присоединиться
+                    </button>
+                </div>
+            `;
+        }
+
+        // Получение иконки категории
+        function getCategoryIcon(category) {
+            const icons = { 'coffee': '☕', 'sports': '🏃', 'cinema': '🎬', 'games': '🎮' };
             return icons[category] || '📍';
         }
 
         // Отображение списка встреч
         function displayMeetingsList() {
             const container = document.getElementById('meetingsList');
-            if (!meetings.length) {
-                container.innerHTML = '<div class="empty-state"><p>Пока нет активных встреч</p></div>';
+            const filtered = meetings.filter(m =>
+                activeFilters.category === 'all' || m.category === activeFilters.category
+            );
+
+            if (!filtered.length) {
+                container.innerHTML = '<div class="empty-state"><p>Пока нет встреч</p></div>';
                 return;
             }
 
-            container.innerHTML = meetings.map(meeting => `
+            container.innerHTML = filtered.map(meeting => `
                 <div class="meeting-card" onclick="showMeetingDetails(${JSON.stringify(meeting).replace(/"/g, '&quot;')})">
-                    <div class="meeting-title">${meeting.title}</div>
+                    <div class="meeting-title">${escapeHtml(meeting.title)}</div>
                     <div class="meeting-meta">
-                        <span class="meeting-time">${meeting.meeting_time}</span>
-                        <span class="meeting-location">${meeting.venue_name || 'На карте'}</span>
+                        <span class="meeting-time">${escapeHtml(meeting.meeting_time)}</span>
+                        <span class="meeting-location">${getCategoryIcon(meeting.category)} ${meeting.category}</span>
                     </div>
-                    <div class="meeting-description">${meeting.description || 'Без описания'}</div>
+                    <div class="meeting-description">${escapeHtml(meeting.description || 'Без описания')}</div>
                     <div class="meeting-actions">
-                        <div class="participants">
-                            👥 ${meeting.current_participants}/${meeting.max_participants}
-                        </div>
+                        <div class="participants">👥 ${meeting.current_participants}/${meeting.max_participants}</div>
                         <button class="join-btn" onclick="joinMeeting(${meeting.id}, event)">
                             Присоединиться
                         </button>
@@ -488,141 +940,564 @@
         }
 
         // Показать детали встречи
-        window.showMeetingDetails = function(meeting) {
+        function showMeetingDetails(meeting) {
             document.getElementById('meetingDetailsContent').innerHTML = `
-                <h2 style="margin-bottom: 15px;">${meeting.title}</h2>
-                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <span class="meeting-time">${meeting.meeting_time}</span>
-                    <span style="color: #667eea; font-weight: 500;">${meeting.venue_name || 'Место уточняется'}</span>
+                <h2 style="margin-bottom: 15px;">${escapeHtml(meeting.title)}</h2>
+                <div style="margin-bottom: 15px;">
+                    <span class="meeting-time">${escapeHtml(meeting.meeting_time)}</span>
                 </div>
-                <p style="margin-bottom: 20px;">${meeting.description || 'Без описания'}</p>
+                <p style="margin-bottom: 20px;">${escapeHtml(meeting.description || 'Без описания')}</p>
                 <div style="background: #f5f5f5; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
                     <strong>👤 Организатор:</strong><br>
-                    ${meeting.first_name} (${meeting.age} лет)<br>
-                    <small>@${meeting.username}</small>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-                    <div>
-                        <strong>👥 Участники:</strong><br>
-                        ${meeting.current_participants}/${meeting.max_participants}
-                    </div>
-                    <div>
-                        <strong>📍 Место:</strong><br>
-                        <small>${meeting.venue_category === 'coffee' ? '☕ Кафе' :
-                                 meeting.venue_category === 'sports' ? '🏃 Спорт' :
-                                 meeting.venue_category === 'cinema' ? '🎬 Кино' : '🎮 Игры'}</small>
-                    </div>
+                    ${escapeHtml(meeting.first_name)} (${meeting.age} лет)
                 </div>
                 <button onclick="joinMeeting(${meeting.id})"
-                        style="width: 100%; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer;">
+                        style="width: 100%; padding: 15px; background: #667eea; color: white; border: none; border-radius: 10px; cursor: pointer;">
                     Присоединиться к встрече
                 </button>
             `;
-
             document.getElementById('meetingDetails').classList.add('active');
-        };
+        }
 
-        // Закрыть детали встречи
         function closeMeetingDetails() {
             document.getElementById('meetingDetails').classList.remove('active');
+        }
+
+        // Присоединиться к встрече из попапа
+        function joinMeetingFromPopup(meetingId) {
+            const meeting = meetings.find(m => m.id == meetingId);
+            if (meeting) {
+                showMeetingDetails(meeting);
+            }
         }
 
         // Присоединиться к встрече
         async function joinMeeting(meetingId, event) {
             if (event) event.stopPropagation();
 
-            if (!userId) {
+            if (!currentUserId) {
                 tg.showAlert('Для присоединения необходимо авторизоваться');
                 return;
             }
 
+            const meeting = meetings.find(m => m.id == meetingId);
+            if (!meeting) {
+                tg.showAlert('Встреча не найдена');
+                return;
+            }
+
+            // Проверяем, не является ли пользователь организатором
+            if (meeting.user_id && meeting.user_id === currentUserId) {
+                tg.showAlert('Вы организатор этой встречи');
+                return;
+            }
+
+            // Проверяем, не присоединился ли уже
             try {
-                const response = await fetch(`/api/meetings/${meetingId}/join/mini`, {
+                const statusResponse = await fetch(`/api/meetings/${meetingId}/status?telegram_id=${currentUserId}`);
+                const statusData = await statusResponse.json();
+
+                if (statusData.status === 'accepted') {
+                    tg.showAlert('Вы уже присоединились к этой встрече');
+                    return;
+                }
+            } catch (error) {
+                console.error('Ошибка проверки статуса:', error);
+            }
+
+            try {
+                const response = await fetch(`/api/meetings/${meetingId}/join`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ telegram_id: userId })
+                    body: JSON.stringify({ telegram_id: currentUserId })
                 });
 
                 const result = await response.json();
 
-                if (result.status === 'joined') {
-                    tg.showAlert('Вы успешно присоединились к встрече!');
-                    loadMeetings(); // Перезагружаем список
+                if (result.status === 'joined' || result.status === 'already_joined') {
+                    tg.showAlert(result.message || 'Вы успешно присоединились к встрече!');
                     closeMeetingDetails();
-                } else if (result.status === 'already_joined') {
-                    tg.showAlert('Вы уже присоединились к этой встрече');
+                    // Обновляем список встреч
+                    await loadMeetings();
+                    // Обновляем список моих встреч
+                    await loadMyMeetings();
+                } else if (result.status === 'full') {
+                    tg.showAlert('К сожалению, все места на встрече уже заняты');
+                } else if (result.error) {
+                    tg.showAlert(result.error);
                 }
             } catch (error) {
-                console.error('Error joining meeting:', error);
-                tg.showAlert('Ошибка при присоединении к встрече');
+                console.error('❌ Ошибка при присоединении:', error);
+                tg.showAlert('Ошибка при присоединении');
             }
         }
 
+        // Загрузка моих встреч
+        async function loadMyMeetings() {
+            if (!currentUserId) {
+                document.getElementById('myMeetingsList').innerHTML =
+                    '<div class="empty-state">Для просмотра встреч необходимо авторизоваться</div>';
+                return;
+            }
+
+            try {
+                document.getElementById('myMeetingsList').innerHTML =
+                    '<div class="loading">⏳ Загрузка ваших встреч...</div>';
+
+                const response = await fetch(`/api/my-meetings?telegram_id=${currentUserId}`);
+                if (!response.ok) throw new Error('HTTP error');
+
+                myMeetings = await response.json();
+                displayMyMeetingsList();
+            } catch (error) {
+                console.error('❌ Ошибка загрузки моих встреч:', error);
+                document.getElementById('myMeetingsList').innerHTML =
+                    '<div class="error-message">❌ Ошибка загрузки встреч</div>';
+            }
+        }
+
+        // Отображение списка моих встреч
+        function displayMyMeetingsList() {
+            const container = document.getElementById('myMeetingsList');
+
+            if (!myMeetings || myMeetings.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 48px; margin-bottom: 15px;">📭</div>
+                        <p>У вас пока нет встреч</p>
+                        <p style="margin-top: 10px; font-size: 14px; color: #666;">
+                            Создайте первую встречу на карте или присоединитесь к существующей!
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = myMeetings.map(meeting => {
+                const isCreator = meeting.type === 'created';
+                const isJoined = meeting.type === 'joined';
+
+                return `
+                    <div class="meeting-card" onclick="showMeetingDetailsFromMy(${meeting.id})">
+                        <div class="meeting-title">
+                            ${escapeHtml(meeting.title)}
+                            ${isCreator ? ' 👑' : ''}
+                            ${isJoined ? ' ✅' : ''}
+                        </div>
+                        <div class="meeting-meta">
+                            <span class="meeting-time">${escapeHtml(meeting.meeting_time)}</span>
+                            <span class="meeting-location">${getCategoryIcon(meeting.category)} ${meeting.category}</span>
+                        </div>
+                        <div class="meeting-description">
+                            ${escapeHtml(meeting.description || 'Без описания')}
+                            ${isJoined && meeting.creator_name ? `<br><small>👤 Организатор: ${escapeHtml(meeting.creator_name)}</small>` : ''}
+                        </div>
+                        <div class="meeting-actions">
+                            <div class="participants">
+                                👥 ${meeting.current_participants}/${meeting.max_participants}
+                            </div>
+                            <button class="join-btn ${isCreator ? 'joined' : ''}"
+                                    onclick="event.stopPropagation(); ${isCreator ? 'deleteMyMeeting(' + meeting.id + ')' : 'leaveMeeting(' + meeting.id + ')'}">
+                                ${isCreator ? '🗑️ Удалить' : '🚪 Покинуть'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Показать детали встречи из раздела "Мои встречи"
+        function showMeetingDetailsFromMy(meetingId) {
+            const meeting = myMeetings.find(m => m.id == meetingId);
+            if (meeting) {
+                showMeetingDetails(meeting);
+            } else {
+                // Ищем в общем списке
+                const allMeeting = meetings.find(m => m.id == meetingId);
+                if (allMeeting) {
+                    showMeetingDetails(allMeeting);
+                }
+            }
+        }
+
+        // Удалить мою встречу
+        async function deleteMyMeeting(meetingId) {
+            if (!currentUserId) {
+                tg.showAlert('Для удаления необходимо авторизоваться');
+                return;
+            }
+
+            if (!confirm('Вы уверены, что хотите удалить эту встречу?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/meetings/${meetingId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telegram_id: currentUserId })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    tg.showAlert('Встреча удалена!');
+                    // Обновляем список встреч
+                    await loadMeetings();
+                    // Обновляем список моих встреч
+                    await loadMyMeetings();
+                } else {
+                    tg.showAlert('Ошибка при удалении встречи');
+                }
+            } catch (error) {
+                console.error('Ошибка удаления встречи:', error);
+                tg.showAlert('Ошибка при удалении встречи');
+            }
+        }
+
+        // Покинуть встречу
+        async function leaveMeeting(meetingId) {
+            if (!currentUserId) {
+                tg.showAlert('Для выхода необходимо авторизоваться');
+                return;
+            }
+
+            if (!confirm('Вы уверены, что хотите покинуть эту встречу?')) {
+                return;
+            }
+
+            tg.showAlert('Функция выхода из встречи в разработке');
+        }
+
+        // Открыть модальное окно создания встречи
+        function openCreateMeetingModal() {
+            if (!currentUserId) {
+                tg.showAlert('Для создания встречи необходимо авторизоваться');
+                return;
+            }
+
+            // Сбрасываем форму
+            document.getElementById('createMeetingForm').reset();
+
+            // Обновляем предпросмотр места
+            updateLocationPreview();
+
+            // Загружаем список заведений в модальное окно
+            loadVenuesForModal();
+
+            document.getElementById('createMeetingModal').style.display = 'flex';
+        }
+
+        // Загрузить заведения для модального окна
+        function loadVenuesForModal() {
+            const venueList = document.getElementById('venueList');
+            if (venues.length === 0) {
+                venueList.innerHTML = '<div style="padding: 10px; color: #666;">Заведения загружаются...</div>';
+                return;
+            }
+
+            venueList.innerHTML = venues.map(venue => `
+                <div class="venue-item" onclick="selectVenueForModal(${venue.id})">
+                    <div style="font-weight: bold;">${escapeHtml(venue.name)}</div>
+                    <div style="color: #666; font-size: 12px;">${escapeHtml(venue.address || '')}</div>
+                </div>
+            `).join('');
+        }
+
+        // Выбрать заведение в модальном окне
+        function selectVenueForModal(venueId) {
+            const venue = venues.find(v => v.id == venueId);
+            if (venue) {
+                selectedVenue = venue;
+                selectedLocation = { lat: venue.latitude, lng: venue.longitude };
+                updateLocationPreview();
+
+                // Помечаем выбранное заведение
+                document.querySelectorAll('.venue-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                event.target.closest('.venue-item').classList.add('active');
+            }
+        }
+
+        // Закрыть модальное окно создания встречи
+        function closeCreateMeetingModal() {
+            document.getElementById('createMeetingModal').style.display = 'none';
+            document.getElementById('createMeetingForm').reset();
+            selectedVenue = null;
+        }
+
+        // Обработка отправки формы создания встречи
+        document.getElementById('createMeetingForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const title = document.getElementById('meetingTitle').value.trim();
+            const description = document.getElementById('meetingDescription').value;
+            const category = document.getElementById('meetingCategory').value;
+            const meetingTime = document.getElementById('meetingTime').value;
+            const maxParticipants = document.getElementById('maxParticipants').value;
+            const customLocation = document.getElementById('customLocation').value;
+
+            // Проверки
+            if (!title) {
+                tg.showAlert('Введите название встречи');
+                return;
+            }
+
+            if (!selectedLocation) {
+                tg.showAlert('Выберите место на карте, кликнув на нужную точку');
+                return;
+            }
+
+            const btn = document.getElementById('createMeetingBtn');
+            btn.disabled = true;
+            btn.textContent = 'Создание...';
+
+            try {
+                // Подготавливаем данные
+                const meetingData = {
+                    telegram_id: currentUserId,
+                    title: title,
+                    description: description,
+                    category: category,
+                    meeting_time: meetingTime,
+                    max_participants: parseInt(maxParticipants),
+                    latitude: selectedLocation.lat,
+                    longitude: selectedLocation.lng,
+                    custom_location: customLocation
+                };
+
+                // Если выбрано заведение, добавляем его ID
+                if (selectedVenue) {
+                    meetingData.venue_id = selectedVenue.id;
+                    meetingData.address = selectedVenue.address || selectedVenue.name;
+                } else if (customLocation) {
+                    meetingData.address = customLocation;
+                    meetingData.venue_id = "custom";
+                }
+
+                console.log("📤 Отправка данных для создания встречи:", meetingData);
+
+                const response = await fetch('/api/meetings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(meetingData)
+                });
+
+                const result = await response.json();
+                console.log("📥 Ответ сервера:", result);
+
+                if (result.success) {
+                    tg.showAlert('✅ Встреча создана успешно!');
+                    closeCreateMeetingModal();
+
+                    // Обновляем данные
+                    await loadMeetings();
+                    await loadMyMeetings();
+
+                    // Показываем карту
+                    showMapView();
+                } else {
+                    tg.showAlert('❌ Ошибка: ' + (result.error || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                console.error('❌ Ошибка при создании встречи:', error);
+                tg.showAlert('❌ Ошибка при создании встречи: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Создать встречу';
+            }
+        });
+
         // Навигация
         function showMapView() {
-            document.getElementById('listingsView').style.display = 'none';
-            document.getElementById('filtersView').style.display = 'none';
+            hideAllViews();
             document.getElementById('map').style.display = 'block';
             updateNavButtons('map');
+            document.getElementById('pageTitle').textContent = '🗺️ Карта встреч';
+            if (map) setTimeout(() => map.invalidateSize(), 100);
         }
 
         function showListingsView() {
+            hideAllViews();
             document.getElementById('listingsView').style.display = 'block';
-            document.getElementById('filtersView').style.display = 'none';
-            document.getElementById('map').style.display = 'none';
             updateNavButtons('listings');
+            document.getElementById('pageTitle').textContent = '📋 Все встречи';
         }
 
-        function showMyMeetings() {
-            tg.showAlert('Функция "Мои встречи" в разработке');
+        function showMyMeetingsView() {
+            hideAllViews();
+            document.getElementById('myMeetingsView').style.display = 'block';
+            updateNavButtons('my');
+            document.getElementById('pageTitle').textContent = '👤 Мои встречи';
+            loadMyMeetings();
         }
 
-        function showFilters() {
-            document.getElementById('listingsView').style.display = 'none';
+        function showFiltersView() {
+            hideAllViews();
             document.getElementById('filtersView').style.display = 'block';
-            document.getElementById('map').style.display = 'none';
             updateNavButtons('filters');
+            document.getElementById('pageTitle').textContent = '⚙️ Фильтры';
+
+            // Обновленный HTML для фильтров
+            document.getElementById('filtersView').innerHTML = `
+                <h2 style="margin-bottom: 20px; font-size: 18px;">⚙️ Фильтры встреч</h2>
+
+                <div style="margin-bottom: 25px;">
+                    <h3 style="margin-bottom: 10px; font-size: 16px;">Категория:</h3>
+                    <div class="filter-buttons" id="categoryFilters">
+                        <button class="filter-btn ${activeFilters.category === 'all' ? 'active' : ''}"
+                                onclick="setCategoryFilter('all')">Все</button>
+                        <button class="filter-btn ${activeFilters.category === 'coffee' ? 'active' : ''}"
+                                onclick="setCategoryFilter('coffee')">☕ Кофе</button>
+                        <button class="filter-btn ${activeFilters.category === 'sports' ? 'active' : ''}"
+                                onclick="setCategoryFilter('sports')">🏃 Спорт</button>
+                        <button class="filter-btn ${activeFilters.category === 'cinema' ? 'active' : ''}"
+                                onclick="setCategoryFilter('cinema')">🎬 Кино</button>
+                        <button class="filter-btn ${activeFilters.category === 'games' ? 'active' : ''}"
+                                onclick="setCategoryFilter('games')">🎮 Игры</button>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 25px;">
+                    <h3 style="margin-bottom: 10px; font-size: 16px;">Время:</h3>
+                    <div class="filter-buttons" id="timeFilters">
+                        <button class="filter-btn ${activeFilters.time === 'all' ? 'active' : ''}"
+                                onclick="setTimeFilter('all')">⏰ Все</button>
+                        <button class="filter-btn ${activeFilters.time === 'today' ? 'active' : ''}"
+                                onclick="setTimeFilter('today')">👋 Сегодня</button>
+                        <button class="filter-btn ${activeFilters.time === 'tomorrow' ? 'active' : ''}"
+                                onclick="setTimeFilter('tomorrow')">📅 Завтра</button>
+                        <button class="filter-btn ${activeFilters.time === 'evening' ? 'active' : ''}"
+                                onclick="setTimeFilter('evening')">🌆 Вечером</button>
+                        <button class="filter-btn ${activeFilters.time === 'weekend' ? 'active' : ''}"
+                                onclick="setTimeFilter('weekend')">🌞 Выходные</button>
+                    </div>
+                </div>
+
+                <button onclick="applyFilters()" class="form-button" style="margin-bottom: 10px;">
+                    Применить фильтры
+                </button>
+
+                <button onclick="resetFilters()" class="form-button" style="background: #666;">
+                    Сбросить фильтры
+                </button>
+            `;
+        }
+
+        function hideAllViews() {
+            document.getElementById('map').style.display = 'none';
+            document.getElementById('listingsView').style.display = 'none';
+            document.getElementById('myMeetingsView').style.display = 'none';
+            document.getElementById('filtersView').style.display = 'none';
+            closeMeetingDetails();
         }
 
         function updateNavButtons(active) {
             document.querySelectorAll('.nav-button').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+            const index = { 'map': 0, 'listings': 1, 'my': 2, 'filters': 3 }[active];
+            document.querySelectorAll('.nav-button')[index].classList.add('active');
         }
 
         // Фильтры
-        function toggleFilter(category) {
-            document.querySelectorAll('.filter-chip').forEach(chip => chip.classList.remove('active'));
-            event.target.classList.add('active');
+        function setCategoryFilter(category) {
             activeFilters.category = category;
-        }
-
-        function toggleTimeFilter(time) {
-            document.querySelectorAll('.filter-chip').forEach(chip => {
-                if (chip.textContent.includes('Сегодня') || chip.textContent.includes('Завтра') ||
-                    chip.textContent.includes('Вечером') || chip.textContent.includes('Выходные')) {
-                    chip.classList.remove('active');
-                }
-            });
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
-            activeFilters.time = time;
         }
 
-        function applyFilters() {
-            updateMapMarkers();
+        function resetFilters() {
+            activeFilters.category = 'all';
+            activeFilters.time = 'all';
+
+            // Перезагрузка всех встреч
+            loadMeetings();
+            tg.showAlert('Фильтры сброшены');
             showMapView();
-            tg.showAlert('Фильтры применены');
         }
 
-        // Создание встречи
-        function createMeeting() {
-            tg.showAlert('Для создания встречи используйте Telegram бота');
-            // В реальном приложении здесь можно открыть форму создания
+
+        async function applyFilters() {
+            const category = activeFilters.category;
+            const time = activeFilters.time;
+
+            try {
+                let url = `/api/meetings`;
+                const params = [];
+
+                if (category !== 'all') {
+                    params.push(`category=${category}`);
+                }
+
+                if (time !== 'all') {
+                    params.push(`time_filter=${time}`);
+                }
+
+                if (params.length > 0) {
+                    url += '?' + params.join('&');
+                }
+
+                console.log(`🔍 Загрузка встреч с фильтрами: ${url}`);
+
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('HTTP error');
+
+                meetings = await response.json();
+                console.log(`✅ Загружено ${meetings.length} встреч с фильтрами`);
+
+                // Обновляем карту
+                updateMapMarkers();
+
+                // Обновляем список встреч
+                displayMeetingsList();
+
+                tg.showAlert('Фильтры применены');
+
+                // Переключаемся на карту
+                showMapView();
+            } catch (error) {
+                console.error('❌ Ошибка применения фильтров:', error);
+                tg.showAlert('Ошибка применения фильтров');
+            }
         }
 
-        // Показать/скрыть загрузку
-        function showLoading(show) {
-            if (show) {
-                document.getElementById('map').innerHTML = '<div class="loading">Загрузка карты...</div>';
+        function setTimeFilter(timeFilter) {
+            activeFilters.time = timeFilter;
+            console.log(`⏰ Установлен временной фильтр: ${timeFilter}`);
+        }
+
+        async function leaveMeeting(meetingId) {
+            if (!currentUserId) {
+                tg.showAlert('Для выхода необходимо авторизоваться');
+                return;
+            }
+
+            if (!confirm('Вы уверены, что хотите покинуть эту встречу?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/meetings/${meetingId}/leave`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telegram_id: currentUserId })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    tg.showAlert('Вы покинули встречу!');
+                    // Обновляем списки
+                    await loadMeetings();
+                    await loadMyMeetings();
+                } else if (result.is_organizer) {
+                    tg.showAlert('Вы организатор встречи. Используйте удаление.');
+                } else {
+                    tg.showAlert(result.error || 'Ошибка при выходе из встречи');
+                }
+            } catch (error) {
+                console.error('Ошибка выхода из встречи:', error);
+                tg.showAlert('Ошибка при выходе из встречи');
             }
         }
 
@@ -630,7 +1505,10 @@
         function goBack() {
             if (document.getElementById('meetingDetails').classList.contains('active')) {
                 closeMeetingDetails();
+            } else if (document.getElementById('createMeetingModal').style.display === 'flex') {
+                closeCreateMeetingModal();
             } else if (document.getElementById('listingsView').style.display === 'block' ||
+                      document.getElementById('myMeetingsView').style.display === 'block' ||
                       document.getElementById('filtersView').style.display === 'block') {
                 showMapView();
             } else {
@@ -638,30 +1516,24 @@
             }
         }
 
-        // Если режим выбора места
-        if (mode === 'location_picker') {
-            map.on('click', function(e) {
-                const lat = e.latlng.lat;
-                const lng = e.latlng.lng;
-
-                // Отправляем данные обратно в Telegram
-                tg.sendData(JSON.stringify({
-                    action: 'location_selected',
-                    latitude: lat,
-                    longitude: lng
-                }));
-
-                tg.close();
-            });
-
-            document.querySelector('.header h1').textContent = '📍 Выберите место';
+        // Экранирование HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
-        // Инициализация при загрузке
-        document.addEventListener('DOMContentLoaded', () => {
-            loadMeetings();
-            tg.BackButton.show();
-            tg.BackButton.onClick(goBack);
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("🚀 Загрузка мини-аппы...");
+            console.log("👤 Текущий пользователь:", currentUser);
+            console.log("🆔 User ID:", currentUserId);
+
+            initMap();
+            window.addEventListener('resize', function() {
+                if (map) setTimeout(() => map.invalidateSize(), 100);
+            });
         });
     </script>
 </body>

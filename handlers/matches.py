@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.context import FSMContext
 import asyncio
 
@@ -470,3 +470,220 @@ async def send_message_to_match(callback: CallbackQuery):
                 )
 
     await callback.answer()
+
+@router.message(F.text == "🗺️ Встречи с карты")
+async def map_meetings_in_bot(message: Message):
+    async with db.pool.acquire() as conn:
+        user = await conn.fetchrow(
+            "SELECT * FROM users WHERE telegram_id = $1 AND is_authenticated = TRUE",
+            message.from_user.id
+        )
+
+        if not user:
+            await message.answer(
+                "❌ Вы не авторизованы!",
+                reply_markup=get_main_menu_keyboard(is_authenticated=False)
+            )
+            return
+
+        # Получаем встречи, созданные пользователем
+        created_meetings = await conn.fetch('''
+            SELECT mr.*, 
+                   COALESCE(participants.count, 0) as current_participants
+            FROM map_meeting_requests mr
+            LEFT JOIN (
+                SELECT meeting_id, COUNT(*) as count 
+                FROM map_meeting_participants 
+                WHERE status = 'accepted'
+                GROUP BY meeting_id
+            ) participants ON participants.meeting_id = mr.id
+            WHERE mr.user_id = $1 AND mr.status = 'active'
+            AND (mr.expires_at IS NULL OR mr.expires_at > NOW())
+            ORDER BY mr.created_at DESC
+        ''', user['id'])
+
+        # Получаем встречи, к которым присоединился пользователь
+        joined_meetings = await conn.fetch('''
+            SELECT mr.*,
+                   u.username as creator_username,
+                   u.first_name as creator_name,
+                   u.telegram_real_username as creator_telegram,
+                   COALESCE(participants.count, 0) as current_participants
+            FROM map_meeting_participants mp
+            JOIN map_meeting_requests mr ON mr.id = mp.meeting_id
+            JOIN users u ON u.id = mr.user_id
+            LEFT JOIN (
+                SELECT meeting_id, COUNT(*) as count 
+                FROM map_meeting_participants 
+                WHERE status = 'accepted'
+                GROUP BY meeting_id
+            ) participants ON participants.meeting_id = mr.id
+            WHERE mp.user_id = $1 AND mp.status = 'accepted' AND mr.status = 'active'
+            AND (mr.expires_at IS NULL OR mr.expires_at > NOW())
+            ORDER BY mp.joined_at DESC
+        ''', user['id'])
+
+    response = "🗺️ **Ваши встречи с карты:**\n\n"
+
+    if created_meetings:
+        response += "👑 **Созданные мной:**\n"
+        for i, meeting in enumerate(created_meetings, 1):
+            response += f"{i}. **{meeting['title']}**\n"
+            response += f"   📍 Категория: {meeting['category']}\n"
+            response += f"   ⏰ Время: {meeting['meeting_time']}\n"
+            response += f"   👥 Участников: {meeting['current_participants']}/{meeting['max_participants']}\n"
+            response += f"   🆔 ID: `{meeting['id']}`\n\n"
+
+    if joined_meetings:
+        response += "✅ **Я присоединился:**\n"
+        for i, meeting in enumerate(joined_meetings, 1):
+            response += f"{i}. **{meeting['title']}**\n"
+            response += f"   👤 Организатор: {meeting['creator_name']}\n"
+            response += f"   📍 Категория: {meeting['category']}\n"
+            response += f"   ⏰ Время: {meeting['meeting_time']}\n"
+            response += f"   👥 Участников: {meeting['current_participants']}/{meeting['max_participants']}\n"
+            response += f"   🆔 ID: `{meeting['id']}`\n\n"
+
+    if not created_meetings and not joined_meetings:
+        response += "📭 У вас пока нет встреч на карте.\n"
+        response += "Создайте первую встречу или присоединитесь к существующей!"
+
+    # Создаем клавиатуру с действиями
+    keyboard_buttons = []
+    if created_meetings:
+        keyboard_buttons.append([KeyboardButton(text="🗑️ Удалить встречу"), KeyboardButton(text="🔄 Обновить список")])
+    if joined_meetings:
+        keyboard_buttons.append([KeyboardButton(text="🚪 Покинуть встречу")])
+    keyboard_buttons.append([KeyboardButton(text="🏠 Главное меню")])
+
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=keyboard_buttons,
+        resize_keyboard=True
+    )
+
+    await message.answer(
+        response,
+        parse_mode="Markdown",
+        reply_markup=keyboard
+    )
+
+@router.message(F.text == "🗑️ Удалить встречу")
+async def delete_map_meeting_handler(message: Message):
+    await message.answer(
+        "Для удаления встречи введите команду:\n"
+        "/delete_map_meeting_X\n\n"
+        "Где X - ID встречи (указан в списке ваших встреч).\n"
+        "Пример: /delete_map_meeting_1"
+    )
+
+# Обработчик для удаления встречи с карты
+@router.message(F.text.startswith("/delete_map_meeting_"))
+async def delete_map_meeting(message: Message):
+    try:
+        meeting_id = int(message.text.split("_")[-1])
+
+        async with db.pool.acquire() as conn:
+            # Проверяем, является ли пользователь создателем встречи
+            meeting = await conn.fetchrow('''
+                SELECT * FROM map_meeting_requests 
+                WHERE id = $1 AND user_id = (
+                    SELECT id FROM users WHERE telegram_id = $2
+                )
+            ''', meeting_id, message.from_user.id)
+
+            if not meeting:
+                await message.answer("❌ Вы не являетесь организатором этой встречи или встреча не найдена.")
+                return
+
+            # Помечаем как удаленную
+            await conn.execute('''
+                UPDATE map_meeting_requests 
+                SET status = 'deleted' 
+                WHERE id = $1
+            ''', meeting_id)
+
+            # Удаляем всех участников
+            await conn.execute('''
+                DELETE FROM map_meeting_participants 
+                WHERE meeting_id = $1
+            ''', meeting_id)
+
+        await message.answer(
+            "✅ Встреча успешно удалена!",
+            reply_markup=get_main_menu_keyboard(is_authenticated=True)
+        )
+
+    except ValueError:
+        await message.answer("❌ Неверный формат команды.")
+    except Exception as e:
+        logging.error(f"Ошибка при удалении встречи: {e}")
+        await message.answer("❌ Ошибка при удалении встречи.")
+
+
+@router.message(F.text == "🚪 Покинуть встречу")
+async def leave_map_meeting_handler(message: Message):
+    await message.answer(
+        "Для выхода из встречи введите команду:\n"
+        "/leave_map_meeting_X\n\n"
+        "Где X - ID встречи (указан в списке ваших встреч).\n"
+        "Пример: /leave_map_meeting_1"
+    )
+
+
+# Обработчик для выхода из встречи на карте
+@router.message(F.text.startswith("/leave_map_meeting_"))
+async def leave_map_meeting(message: Message):
+    try:
+        meeting_id = int(message.text.split("_")[-1])
+
+        async with db.pool.acquire() as conn:
+            # Находим пользователя
+            user = await conn.fetchrow(
+                "SELECT id FROM users WHERE telegram_id = $1",
+                message.from_user.id
+            )
+
+            if not user:
+                await message.answer("❌ Пользователь не найден.")
+                return
+
+            # Проверяем участие пользователя
+            participant = await conn.fetchrow('''
+                SELECT * FROM map_meeting_participants 
+                WHERE meeting_id = $1 AND user_id = $2 AND status = 'accepted'
+            ''', meeting_id, user['id'])
+
+            if not participant:
+                await message.answer("❌ Вы не участвуете в этой встрече.")
+                return
+
+            # Проверяем, не является ли пользователь организатором
+            meeting = await conn.fetchrow('''
+                SELECT * FROM map_meeting_requests 
+                WHERE id = $1 AND user_id = $2
+            ''', meeting_id, user['id'])
+
+            if meeting:
+                await message.answer("❌ Вы организатор встречи. Используйте удаление.")
+                return
+
+            # Удаляем участника
+            await conn.execute('''
+                DELETE FROM map_meeting_participants 
+                WHERE meeting_id = $1 AND user_id = $2
+            ''', meeting_id, user['id'])
+
+        await message.answer(
+            "✅ Вы успешно покинули встречу!",
+            reply_markup=get_main_menu_keyboard(is_authenticated=True)
+        )
+
+    except ValueError:
+        await message.answer("❌ Неверный формат команды.")
+    except Exception as e:
+        logging.error(f"Ошибка при выходе из встречи: {e}")
+        await message.answer("❌ Ошибка при выходе из встречи.")
+
+@router.message(F.text == "🔄 Обновить список")
+async def refresh_map_meetings(message: Message):
+    await map_meetings_in_bot(message)

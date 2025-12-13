@@ -2,10 +2,13 @@ from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-
-from keyboards import get_main_menu_keyboard, get_profile_keyboard, get_back_to_menu_keyboard, get_edit_profile_keyboard
+from datetime import datetime
+from keyboards import get_main_menu_keyboard, get_profile_keyboard, get_back_to_menu_keyboard, get_edit_profile_keyboard, get_cancel_keyboard
 from database import db
 from utils import decrypt_data, encrypt_data
+import logging
+import aiofiles
+
 
 router = Router()
 
@@ -251,6 +254,107 @@ async def change_about(message: Message, state: FSMContext):
         )
 
     await state.set_state(EditProfileStates.editing_about)
+
+
+@router.message(F.text == "📷 Изменить фото")
+async def change_photo(message: Message, state: FSMContext):
+    # Получаем текущего пользователя
+    async with db.pool.acquire() as conn:
+        user = await conn.fetchrow(
+            "SELECT * FROM users WHERE telegram_id = $1",
+            message.from_user.id
+        )
+
+    if user and user['photo_id']:
+        await message.answer_photo(
+            photo=user['photo_id'],
+            caption="📷 Текущее фото профиля.\n\nОтправьте новое фото:",
+            reply_markup=get_cancel_keyboard()
+        )
+    else:
+        await message.answer(
+            "📷 Отправьте новое фото для профиля:",
+            reply_markup=get_cancel_keyboard()
+        )
+
+    await state.set_state(EditProfileStates.editing_photo)
+
+
+@router.message(EditProfileStates.editing_photo, F.photo)
+async def process_new_photo(message: Message, state: FSMContext):
+    try:
+        if message.text and message.text == "❌ Отмена":
+            await state.clear()
+            await message.answer(
+                "Изменение фото отменено",
+                reply_markup=get_profile_keyboard()
+            )
+            return
+
+        # Получаем фото с наилучшим качеством
+        photo = message.photo[-1]
+
+        # Получаем файл
+        file = await message.bot.get_file(photo.file_id)
+
+        # Скачиваем фото
+        photo_data = await message.bot.download_file(file.file_path)
+
+        # Сохраняем фото
+        photo_bytes = photo_data.read()
+        photo_path = f"uploads/profile_photos/user_{message.from_user.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+
+        # Сохраняем на диск
+        async with aiofiles.open(photo_path, 'wb') as f:
+            await f.write(photo_bytes)
+
+        # Обновляем фото в базе данных
+        async with db.pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE users SET photo_id = $1, photo_path = $2 WHERE telegram_id = $3",
+                photo.file_id, photo_path, message.from_user.id
+            )
+
+            # Получаем обновленного пользователя
+            user = await conn.fetchrow(
+                "SELECT * FROM users WHERE telegram_id = $1",
+                message.from_user.id
+            )
+
+        await state.clear()
+
+        # Отправляем подтверждение с новым фото
+        await message.answer_photo(
+            photo=photo.file_id,
+            caption="✅ Фото успешно обновлено!",
+            reply_markup=get_profile_keyboard(user['is_published'] if user else False)
+        )
+
+    except Exception as e:
+        logging.error(f"Ошибка при изменении фото: {e}")
+        await message.answer(
+            "❌ Ошибка при изменении фото. Попробуйте еще раз.",
+            reply_markup=get_profile_keyboard()
+        )
+        await state.clear()
+
+
+# Обработчик текста вместо фото
+@router.message(EditProfileStates.editing_photo)
+async def process_wrong_photo_input(message: Message, state: FSMContext):
+    if message.text == "❌ Отмена":
+        await state.clear()
+        await message.answer(
+            "Изменение фото отменено",
+            reply_markup=get_profile_keyboard()
+        )
+        return
+
+    await message.answer(
+        "❌ Пожалуйста, отправьте фото (не документ).\n\n"
+        "Если вы хотите отменить изменение фото, нажмите '❌ Отмена'.",
+        reply_markup=get_cancel_keyboard()
+    )
 
 
 @router.message(EditProfileStates.editing_about)

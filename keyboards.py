@@ -182,9 +182,32 @@ def get_meetings_keyboard():
     builder.add(KeyboardButton(text="📅 Предстоящие встречи"))  # Отправленные запросы
     builder.add(KeyboardButton(text="✅ Подтвержденные встречи"))
     builder.add(KeyboardButton(text="🏠 Главное меню"))
+    builder.add(KeyboardButton(text="🗺️ Встречи с карты"))
     builder.adjust(2)
     return builder.as_markup(resize_keyboard=True)
 
+
+def get_map_meeting_actions_keyboard(meeting_id, is_creator=False):
+    builder = InlineKeyboardBuilder()
+
+    if is_creator:
+        builder.add(InlineKeyboardButton(
+            text="🗑️ Удалить встречу",
+            callback_data=f"delete_map_meeting_{meeting_id}"
+        ))
+    else:
+        builder.add(InlineKeyboardButton(
+            text="🚪 Покинуть встречу",
+            callback_data=f"leave_map_meeting_{meeting_id}"
+        ))
+
+    builder.add(InlineKeyboardButton(
+        text="📋 Показать детали",
+        callback_data=f"show_map_meeting_{meeting_id}"
+    ))
+
+    builder.adjust(1)
+    return builder.as_markup()
 
 # Клавиатура для карты встреч
 def get_map_keyboard():
