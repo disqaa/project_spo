@@ -1,7 +1,8 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+# override=False — переменные Railway НЕ перезаписываются из .env файла
+load_dotenv(override=False)
 
 
 class Config:
@@ -13,18 +14,17 @@ class Config:
     DB_NAME = os.getenv("DB_NAME", "telegram_bot_db")
     DB_USER = os.getenv("DB_USER", "postgres")
     DB_PASSWORD = os.getenv("DB_PASSWORD", "")
-    DATABASE_URL = f"postgresql+asyncpg://{os.getenv('DB_USER', 'postgres')}:{os.getenv('DB_PASSWORD', '')}@{os.getenv('DB_HOST', 'localhost')}:{os.getenv('DB_PORT', '5432')}/{os.getenv('DB_NAME', 'telegram_bot_db')}"
+    DATABASE_URL = os.getenv("DATABASE_URL", "")
 
-    # Proxy (для обхода блокировок Telegram в России)
-    # Форматы: socks5://user:pass@host:port  или  http://user:pass@host:port
-    PROXY_URL = os.getenv("PROXY_URL", "")  # пустая строка = без прокси
+    # Proxy
+    PROXY_URL = os.getenv("PROXY_URL", "")
 
-    # Mini App
+    # Mini App — берётся из Railway Variables, не из .env
     MINI_APP_URL = os.getenv("MINI_APP_URL", "")
 
     # Web server
     WEB_SERVER_HOST = os.getenv("WEB_SERVER_HOST", "0.0.0.0")
-    WEB_SERVER_PORT = int(os.getenv("WEB_SERVER_PORT", "8000"))
+    WEB_SERVER_PORT = int(os.getenv("PORT", os.getenv("WEB_SERVER_PORT", "8000")))
 
     # Environment
     ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
