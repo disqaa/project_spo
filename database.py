@@ -1,4 +1,3 @@
-# database.py - ТОЛЬКО СОЗДАНИЕ ТАБЛИЦ
 import asyncpg
 from config import config
 import os
@@ -7,12 +6,13 @@ import logging
 os.makedirs("uploads", exist_ok=True)
 os.makedirs("uploads/profile_photos", exist_ok=True)
 
+
 class Database:
     def __init__(self):
         self.pool = None
 
     async def init_db(self):
-        """Initialize database with all required tables ONLY"""
+        """Initialize database — creates tables and migrates missing columns."""
         try:
             self.pool = await asyncpg.create_pool(
                 user=config.DB_USER,
@@ -21,13 +21,13 @@ class Database:
                 host=config.DB_HOST,
                 port=config.DB_PORT,
                 min_size=5,
-                max_size=20
+                max_size=20,
             )
-
             logging.info("✅ Подключение к базе данных успешно")
 
             async with self.pool.acquire() as conn:
-                # Users table
+
+                # ── Users ────────────────────────────────────────────────────
                 await conn.execute('''
                     CREATE TABLE IF NOT EXISTS users (
                         id SERIAL PRIMARY KEY,
@@ -57,7 +57,7 @@ class Database:
                 ''')
                 logging.info("✅ Таблица users создана/проверена")
 
-                # Likes table
+                # ── Likes ────────────────────────────────────────────────────
                 await conn.execute('''
                     CREATE TABLE IF NOT EXISTS likes (
                         id SERIAL PRIMARY KEY,
@@ -69,7 +69,7 @@ class Database:
                 ''')
                 logging.info("✅ Таблица likes создана/проверена")
 
-                # Profile views table
+                # ── Profile views ────────────────────────────────────────────
                 await conn.execute('''
                     CREATE TABLE IF NOT EXISTS profile_views (
                         id SERIAL PRIMARY KEY,
@@ -81,7 +81,7 @@ class Database:
                 ''')
                 logging.info("✅ Таблица profile_views создана/проверена")
 
-                # Search filters table
+                # ── Search filters ───────────────────────────────────────────
                 await conn.execute('''
                     CREATE TABLE IF NOT EXISTS search_filters (
                         id SERIAL PRIMARY KEY,
@@ -95,7 +95,7 @@ class Database:
                 ''')
                 logging.info("✅ Таблица search_filters создана/проверена")
 
-                # Matches table
+                # ── Matches ──────────────────────────────────────────────────
                 await conn.execute('''
                     CREATE TABLE IF NOT EXISTS matches (
                         id SERIAL PRIMARY KEY,
@@ -112,7 +112,7 @@ class Database:
                 ''')
                 logging.info("✅ Таблица matches создана/проверена")
 
-                # Venues table (for map)
+                # ── Venues ───────────────────────────────────────────────────
                 await conn.execute('''
                     CREATE TABLE IF NOT EXISTS venues (
                         id SERIAL PRIMARY KEY,
@@ -129,7 +129,7 @@ class Database:
                 ''')
                 logging.info("✅ Таблица venues создана/проверена")
 
-                # Map meeting requests table
+                # ── Map meeting requests ──────────────────────────────────────
                 await conn.execute('''
                     CREATE TABLE IF NOT EXISTS map_meeting_requests (
                         id SERIAL PRIMARY KEY,
@@ -142,6 +142,7 @@ class Database:
                         max_participants INTEGER DEFAULT 2,
                         latitude DECIMAL(10, 8),
                         longitude DECIMAL(11, 8),
+                        address TEXT,
                         status VARCHAR(50) DEFAULT 'active',
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         expires_at TIMESTAMP,
@@ -151,7 +152,14 @@ class Database:
                 ''')
                 logging.info("✅ Таблица map_meeting_requests создана/проверена")
 
-                # Map meeting participants table
+                # ── Migration: add address if missing (for existing DBs) ─────
+                await conn.execute('''
+                    ALTER TABLE map_meeting_requests
+                    ADD COLUMN IF NOT EXISTS address TEXT
+                ''')
+                logging.info("✅ Миграция map_meeting_requests.address выполнена")
+
+                # ── Map meeting participants ───────────────────────────────────
                 await conn.execute('''
                     CREATE TABLE IF NOT EXISTS map_meeting_participants (
                         id SERIAL PRIMARY KEY,
@@ -164,18 +172,18 @@ class Database:
                 ''')
                 logging.info("✅ Таблица map_meeting_participants создана/проверена")
 
-                # Create indexes for optimization
+                # ── Indexes ───────────────────────────────────────────────────
                 await conn.execute('''
-                    CREATE INDEX IF NOT EXISTS idx_users_authenticated 
-                    ON users(is_authenticated, is_published);
+                    CREATE INDEX IF NOT EXISTS idx_users_authenticated
+                    ON users(is_authenticated, is_published)
                 ''')
                 await conn.execute('''
-                    CREATE INDEX IF NOT EXISTS idx_map_meetings_status 
-                    ON map_meeting_requests(status);
+                    CREATE INDEX IF NOT EXISTS idx_map_meetings_status
+                    ON map_meeting_requests(status)
                 ''')
                 await conn.execute('''
-                    CREATE INDEX IF NOT EXISTS idx_map_meetings_category 
-                    ON map_meeting_requests(category);
+                    CREATE INDEX IF NOT EXISTS idx_map_meetings_category
+                    ON map_meeting_requests(category)
                 ''')
                 logging.info("✅ Индексы созданы/проверены")
 
@@ -184,5 +192,6 @@ class Database:
         except Exception as e:
             logging.error(f"❌ Ошибка инициализации базы данных: {e}")
             raise
+
 
 db = Database()

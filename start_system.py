@@ -1,11 +1,20 @@
+"""
+start_system.py
+
+Локально: запускает туннель + веб-сервер + бот
+На Railway: запускает только веб-сервер + бот (туннель не нужен)
+"""
+
 import asyncio
 import multiprocessing
-import threading
 import time
 import logging
 import sys
 import os
-import subprocess
+
+# Фикс для Windows
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 logging.basicConfig(
     level=logging.INFO,
@@ -13,108 +22,94 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Railway автоматически задаёт переменную RAILWAY_ENVIRONMENT
+IS_RAILWAY = os.getenv("RAILWAY_ENVIRONMENT") is not None
+
 
 def run_web_server():
-    logger.info("🌐 Запуск веб-сервера...")
     import uvicorn
+    port = int(os.getenv("PORT", 8000))  # Railway задаёт PORT сам
+    logger.info(f"🌐 Запуск веб-сервера на порту {port}...")
     uvicorn.run(
         "web_server:app",
         host="0.0.0.0",
-        port=8000,
-        log_level="info",
-        reload=False
+        port=port,
+        log_level="warning",
+        reload=False,
     )
 
 
-def run_bot():
-    logger.info("🤖 Запуск Telegram бота...")
-    import asyncio
-    from main import main as bot_main
-    asyncio.run(bot_main())
+def start_tunnel_and_save_url():
+    """Запускает туннель только локально."""
+    from tunnel_handler import tunnel_manager
 
+    webapp_url = tunnel_manager.start_tunnel(port=8000)
 
-def run_ngrok():
-    try:
-        logger.info("🔗 Запуск ngrok...")
-        # Запускаем ngrok в отдельном процессе
-        process = subprocess.Popen(
-            ['ngrok', 'http', '8000', '--region=eu'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
+    if webapp_url:
+        public_url = tunnel_manager.get_public_url()
+        logger.info(f"🌐 Публичный URL: {public_url}")
+        logger.info(f"📱 Mini App URL:  {webapp_url}")
 
-        time.sleep(5)
+        with open("tunnel_url.txt", "w") as f:
+            f.write(f"Public URL: {public_url}\n")
+            f.write(f"Mini App URL: {webapp_url}\n")
 
         try:
-            import requests
-            response = requests.get('http://localhost:4040/api/tunnels', timeout=5)
-            if response.status_code == 200:
-                data = response.json()
-                tunnels = data.get('tunnels', [])
-                if tunnels:
-                    for tunnel in tunnels:
-                        if tunnel['proto'] == 'https':
-                            public_url = tunnel['public_url']
-                            logger.info(f"✅ Ngrok запущен: {public_url}")
+            from dotenv import set_key
+            set_key(".env", "MINI_APP_URL", public_url)
+        except Exception as e:
+            logger.warning(f"⚠️ Не удалось обновить .env: {e}")
 
-                            # Сохраняем URL
-                            with open('ngrok_url.txt', 'w') as f:
-                                f.write(f"Public URL: {public_url}\n")
-                                f.write(f"Mini App URL: {public_url}/mini\n")
+        from config import config
+        config.MINI_APP_URL = public_url
+    else:
+        logger.warning("⚠️ Туннель не запустился — мини-апп доступен только локально.")
 
-                            # Обновляем .env файл
-                            from dotenv import set_key
-                            set_key('.env', 'MINI_APP_URL', public_url)
-
-                            return public_url
-        except:
-            logger.warning("⚠️ Не удалось получить URL от ngrok")
-
-        return None
-
-    except Exception as e:
-        logger.error(f"❌ Ошибка запуска ngrok: {e}")
-        return None
+    return webapp_url
 
 
 async def main():
-    logger.info("🚀 Запуск системы MeetMap...")
+    if IS_RAILWAY:
+        logger.info("🚀 Запуск на Railway...")
+    else:
+        logger.info("🚀 Запуск локально...")
 
-    # 1. Проверяем наличие ngrok
-    ngrok_url = run_ngrok()
-
-    # 2. Запускаем веб-сервер в отдельном процессе
-    logger.info("1. Запуск веб-сервера...")
+    # 1. Веб-сервер
+    logger.info("── 1. Запуск веб-сервера ──")
     web_process = multiprocessing.Process(target=run_web_server, daemon=True)
     web_process.start()
+    time.sleep(2)
 
-    # Ждем запуска веб-сервера
-    time.sleep(3)
+    # 2. Туннель (только локально)
+    if not IS_RAILWAY:
+        logger.info("── 2. Запуск Cloudflare-туннеля ──")
+        start_tunnel_and_save_url()
+    else:
+        # На Railway URL берём из переменной окружения MINI_APP_URL
+        from config import config
+        if config.MINI_APP_URL:
+            logger.info(f"🌐 Mini App URL (Railway): {config.MINI_APP_URL}/mini")
+        else:
+            logger.warning("⚠️ MINI_APP_URL не задан в переменных Railway!")
 
-    # 3. Запускаем бота в основном потоке
-    logger.info("2. Запуск Telegram бота...")
-
+    # 3. Бот
+    logger.info("── 3. Запуск Telegram-бота ──")
     try:
-        import asyncio
         from main import main as bot_main
-
-        # Запускаем бота
         await bot_main()
-
     except KeyboardInterrupt:
-        logger.info("👋 Остановлено пользователем")
+        logger.info("👋 Остановлено")
     except Exception as e:
-        logger.error(f"❌ Ошибка при запуске бота: {e}")
+        logger.error(f"❌ Ошибка бота: {e}", exc_info=True)
     finally:
-        # Очистка
-        logger.info("🧹 Очистка ресурсов...")
-
+        logger.info("🧹 Завершение...")
+        if not IS_RAILWAY:
+            from tunnel_handler import tunnel_manager
+            tunnel_manager.stop_tunnel()
         if web_process.is_alive():
             web_process.terminate()
             web_process.join(timeout=5)
-
-        logger.info("👋 Система остановлена")
+        logger.info("👋 Система остановлена.")
 
 
 if __name__ == "__main__":
@@ -123,4 +118,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logger.info("👋 Остановлено пользователем")
     except Exception as e:
-        logger.error(f"❌ Критическая ошибка: {e}")
+        logger.error(f"❌ Критическая ошибка: {e}", exc_info=True)

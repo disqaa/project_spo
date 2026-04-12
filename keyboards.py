@@ -1,8 +1,12 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import (
+    ReplyKeyboardMarkup, KeyboardButton,
+    InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo,
+)
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 
 
-# Главное меню
+# ── Главное меню ──────────────────────────────────────────────────────────────
+
 def get_main_menu_keyboard(is_authenticated: bool = False):
     builder = ReplyKeyboardBuilder()
 
@@ -22,15 +26,15 @@ def get_main_menu_keyboard(is_authenticated: bool = False):
     return builder.as_markup(resize_keyboard=True)
 
 
-# Клавиатура для отмены действий
+# ── Вспомогательные клавиатуры ────────────────────────────────────────────────
+
 def get_cancel_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text="❌ Отмена")]],
-        resize_keyboard=True
+        resize_keyboard=True,
     )
 
 
-# Инлайн кнопки для подтверждения
 def get_confirmation_keyboard():
     builder = InlineKeyboardBuilder()
     builder.add(InlineKeyboardButton(text="✅ Подтвердить", callback_data="confirm"))
@@ -38,26 +42,25 @@ def get_confirmation_keyboard():
     return builder.as_markup()
 
 
-# Кнопка пропуска (для опциональных полей)
 def get_skip_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="⏩ Пропустить")],
-            [KeyboardButton(text="❌ Отмена")]
+            [KeyboardButton(text="❌ Отмена")],
         ],
-        resize_keyboard=True
+        resize_keyboard=True,
     )
 
 
-# Клавиатура для возврата в меню
 def get_back_to_menu_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text="🏠 Главное меню")]],
-        resize_keyboard=True
+        resize_keyboard=True,
     )
 
 
-# Клавиатура для профиля
+# ── Профиль ───────────────────────────────────────────────────────────────────
+
 def get_profile_keyboard(is_published: bool = False):
     builder = ReplyKeyboardBuilder()
 
@@ -77,41 +80,6 @@ def get_profile_keyboard(is_published: bool = False):
     return builder.as_markup(resize_keyboard=True)
 
 
-# Инлайн кнопки для поиска
-def get_search_keyboard():
-    builder = InlineKeyboardBuilder()
-    builder.add(InlineKeyboardButton(text="❤️ Лайк", callback_data="like"))
-    builder.add(InlineKeyboardButton(text="➡️ Пропустить", callback_data="skip"))
-    builder.add(InlineKeyboardButton(text="🚪 Выйти из поиска", callback_data="stop_search"))
-    return builder.as_markup()
-
-
-# Инлайн кнопки для сохранения фильтра
-def get_save_filter_keyboard():
-    builder = InlineKeyboardBuilder()
-    builder.add(InlineKeyboardButton(text="💾 Сохранить фильтр", callback_data="save_filter"))
-    builder.add(InlineKeyboardButton(text="🔍 Поиск", callback_data="search_with_filter"))
-    builder.add(InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_filter"))
-    return builder.as_markup()
-
-
-# Инлайн кнопки для подтверждения встречи
-def get_meeting_confirmation_keyboard(match_id: int):
-    builder = InlineKeyboardBuilder()
-    builder.add(InlineKeyboardButton(text="✅ Согласен на встречу", callback_data=f"accept_meeting_{match_id}"))
-    builder.add(InlineKeyboardButton(text="❌ Отклонить", callback_data=f"reject_meeting_{match_id}"))
-    return builder.as_markup()
-
-
-# Инлайн кнопки для встреч
-def get_meeting_details_keyboard(match_id: int):
-    builder = InlineKeyboardBuilder()
-    builder.add(InlineKeyboardButton(text="📞 Написать", callback_data=f"message_{match_id}"))
-    builder.add(InlineKeyboardButton(text="❌ Отменить встречу", callback_data=f"cancel_meeting_{match_id}"))
-    return builder.as_markup()
-
-
-# Клавиатура для редактирования профиля
 def get_edit_profile_keyboard():
     builder = ReplyKeyboardBuilder()
     builder.add(KeyboardButton(text="📝 Изменить интересы"))
@@ -123,37 +91,16 @@ def get_edit_profile_keyboard():
     return builder.as_markup(resize_keyboard=True)
 
 
-# Клавиатура для выбора интереса активности
-def get_activity_interests_keyboard():
-    interests = ["🏃 Спорт", "🎬 Кино", "☕ Кафе/Бар", "🎮 Настольные игры"]
-    builder = ReplyKeyboardBuilder()
-    for interest in interests:
-        builder.add(KeyboardButton(text=interest))
-    builder.add(KeyboardButton(text="❌ Отмена"))
-    builder.adjust(2)
-    return builder.as_markup(resize_keyboard=True)
+# ── Поиск ────────────────────────────────────────────────────────────────────
+
+def get_search_keyboard():
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(text="❤️ Лайк", callback_data="like"))
+    builder.add(InlineKeyboardButton(text="➡️ Пропустить", callback_data="skip"))
+    builder.add(InlineKeyboardButton(text="🚪 Выйти из поиска", callback_data="stop_search"))
+    return builder.as_markup()
 
 
-# Клавиатура для выбора времени активности
-def get_activity_time_keyboard():
-    times = [
-        "👋 Сегодня",
-        "📅 Завтра",
-        "🗓️ В ближайшие дни",
-        "🌆 Вечером",
-        "🌅 Утром",
-        "🌞 В выходные",
-        "⏰ Любое время"
-    ]
-    builder = ReplyKeyboardBuilder()
-    for time in times:
-        builder.add(KeyboardButton(text=time))
-    builder.add(KeyboardButton(text="❌ Отмена"))
-    builder.adjust(2)
-    return builder.as_markup(resize_keyboard=True)
-
-
-# Клавиатура для фильтров поиска
 def get_search_filters_keyboard():
     builder = ReplyKeyboardBuilder()
     builder.add(KeyboardButton(text="🎯 По интересу"))
@@ -167,19 +114,70 @@ def get_search_filters_keyboard():
     return builder.as_markup(resize_keyboard=True)
 
 
-
-
-# Клавиатура для предстоящих встреч (отправленные запросы)
-def get_upcoming_meetings_keyboard(match_id: int):
+def get_save_filter_keyboard():
     builder = InlineKeyboardBuilder()
-    builder.add(InlineKeyboardButton(text="❌ Отменить запрос", callback_data=f"cancel_meeting_{match_id}"))
+    builder.add(InlineKeyboardButton(text="💾 Сохранить фильтр", callback_data="save_filter"))
+    builder.add(InlineKeyboardButton(text="🔍 Поиск", callback_data="search_with_filter"))
+    builder.add(InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_filter"))
     return builder.as_markup()
 
-# Обновленная клавиатура для встреч
+
+# ── Активность ────────────────────────────────────────────────────────────────
+
+def get_activity_interests_keyboard():
+    interests = ["🏃 Спорт", "🎬 Кино", "☕ Кафе/Бар", "🎮 Настольные игры"]
+    builder = ReplyKeyboardBuilder()
+    for interest in interests:
+        builder.add(KeyboardButton(text=interest))
+    builder.add(KeyboardButton(text="❌ Отмена"))
+    builder.adjust(2)
+    return builder.as_markup(resize_keyboard=True)
+
+
+def get_activity_time_keyboard():
+    times = [
+        "👋 Сегодня", "📅 Завтра", "🗓️ В ближайшие дни",
+        "🌆 Вечером", "🌅 Утром", "🌞 В выходные", "⏰ Любое время",
+    ]
+    builder = ReplyKeyboardBuilder()
+    for time in times:
+        builder.add(KeyboardButton(text=time))
+    builder.add(KeyboardButton(text="❌ Отмена"))
+    builder.adjust(2)
+    return builder.as_markup(resize_keyboard=True)
+
+
+# ── Встречи ───────────────────────────────────────────────────────────────────
+
+def get_meeting_confirmation_keyboard(match_id: int):
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(
+        text="✅ Согласен на встречу", callback_data=f"accept_meeting_{match_id}"))
+    builder.add(InlineKeyboardButton(
+        text="❌ Отклонить", callback_data=f"reject_meeting_{match_id}"))
+    return builder.as_markup()
+
+
+def get_meeting_details_keyboard(match_id: int):
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(
+        text="📞 Написать", callback_data=f"message_{match_id}"))
+    builder.add(InlineKeyboardButton(
+        text="❌ Отменить встречу", callback_data=f"cancel_meeting_{match_id}"))
+    return builder.as_markup()
+
+
+def get_upcoming_meetings_keyboard(match_id: int):
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(
+        text="❌ Отменить запрос", callback_data=f"cancel_meeting_{match_id}"))
+    return builder.as_markup()
+
+
 def get_meetings_keyboard():
     builder = ReplyKeyboardBuilder()
-    builder.add(KeyboardButton(text="📝 Запросы на встречу"))  # Полученные запросы
-    builder.add(KeyboardButton(text="📅 Предстоящие встречи"))  # Отправленные запросы
+    builder.add(KeyboardButton(text="📝 Запросы на встречу"))
+    builder.add(KeyboardButton(text="📅 Предстоящие встречи"))
     builder.add(KeyboardButton(text="✅ Подтвержденные встречи"))
     builder.add(KeyboardButton(text="🏠 Главное меню"))
     builder.add(KeyboardButton(text="🗺️ Встречи с карты"))
@@ -187,32 +185,54 @@ def get_meetings_keyboard():
     return builder.as_markup(resize_keyboard=True)
 
 
-def get_map_meeting_actions_keyboard(meeting_id, is_creator=False):
+def get_map_meeting_actions_keyboard(meeting_id: int, is_creator: bool = False):
     builder = InlineKeyboardBuilder()
-
     if is_creator:
         builder.add(InlineKeyboardButton(
             text="🗑️ Удалить встречу",
-            callback_data=f"delete_map_meeting_{meeting_id}"
+            callback_data=f"delete_map_meeting_{meeting_id}",
         ))
     else:
         builder.add(InlineKeyboardButton(
             text="🚪 Покинуть встречу",
-            callback_data=f"leave_map_meeting_{meeting_id}"
+            callback_data=f"leave_map_meeting_{meeting_id}",
         ))
-
     builder.add(InlineKeyboardButton(
         text="📋 Показать детали",
-        callback_data=f"show_map_meeting_{meeting_id}"
+        callback_data=f"show_map_meeting_{meeting_id}",
     ))
-
     builder.adjust(1)
     return builder.as_markup()
 
-# Клавиатура для карты встреч
-def get_map_keyboard():
+
+# ── Карта встреч ──────────────────────────────────────────────────────────────
+
+def get_map_keyboard(mini_app_url: str = ""):
+    """
+    Строит клавиатуру карты встреч.
+
+    Если mini_app_url — HTTPS-адрес, используем WebApp-кнопку (открывается
+    прямо внутри Telegram). Если HTTP (локалка) — обычная ссылка в браузере.
+    """
     builder = InlineKeyboardBuilder()
-    builder.add(InlineKeyboardButton(text="📍 Открыть карту", url="http://localhost:8000"))
+
+    if mini_app_url and mini_app_url.startswith("https://"):
+        builder.add(InlineKeyboardButton(
+            text="📍 Открыть карту",
+            web_app=WebAppInfo(url=mini_app_url),
+        ))
+    elif mini_app_url:
+        builder.add(InlineKeyboardButton(
+            text="📍 Открыть карту (браузер)",
+            url=mini_app_url,
+        ))
+    else:
+        # Туннель ещё не поднялся — показываем заглушку
+        builder.add(InlineKeyboardButton(
+            text="⏳ Карта недоступна (туннель не запущен)",
+            callback_data="tunnel_not_ready",
+        ))
+
     builder.add(InlineKeyboardButton(text="📝 Создать заявку", callback_data="create_map_meeting"))
     builder.add(InlineKeyboardButton(text="📋 Мои заявки", callback_data="my_map_meetings"))
     builder.add(InlineKeyboardButton(text="🏠 В главное меню", callback_data="back_to_menu"))
