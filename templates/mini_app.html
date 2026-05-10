@@ -6,8 +6,8 @@
     <title>MeetMap - Карта встреч</title>
 
     <!-- ЛОКАЛЬНЫЕ ФАЙЛЫ Leaflet -->
-    <link rel="stylesheet" href="/static/leaflet/leaflet.css" />
-    <script src="/static/leaflet/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <!-- Telegram Web App JS -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -636,13 +636,6 @@
             console.log("🚀 Инициализация карты...");
 
             try {
-                // Устанавливаем путь к иконкам маркеров
-                delete L.Icon.Default.prototype._getIconUrl;
-                L.Icon.Default.mergeOptions({
-                    iconRetinaUrl: '/static/leaflet/images/marker-icon-2x.png',
-                    iconUrl: '/static/leaflet/images/marker-icon.png',
-                    shadowUrl: '/static/leaflet/images/marker-shadow.png',
-                });
 
                 // Создаем карту
                 const defaultCoords = [55.7558, 37.6173];
