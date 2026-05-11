@@ -1,1 +1,1 @@
-web: python clear_db.py
+web: python start_system.py
